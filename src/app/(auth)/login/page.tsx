@@ -47,10 +47,10 @@ export default function LoginPage() {
             )}
           </button>
         </div>
-        
+
         <div className="text-right">
           <Link href="/forgot-password" className="text-xs text-[#6F6F6C] underline underline-offset-2">
-            Forgot password?
+            Forgot your password?
           </Link>
         </div>
 
