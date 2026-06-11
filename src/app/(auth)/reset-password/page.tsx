@@ -14,7 +14,10 @@ export default function ResetPasswordPage() {
     const [status, setStatus] = useState<Status>("loading");
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
-    const [state, action, pending] = useActionState(updatePassword, null);
+    const [state, action, pending] = useActionState(updatePassword, {
+        error: null,
+        success: false,
+    })
     const router = useRouter();
 
     useEffect(() => {

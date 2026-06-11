@@ -5,38 +5,41 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function signUp(
-  _prevState: { error: string } | null,
-  formData: FormData
-) {
-  const supabase = await createClient();
+// ── Shared types ──────────────────────────────────────────────
+type BasicState = { error: string } | null
 
+type AuthActionState = {
+  error: string | null
+  success: boolean
+} | null
+
+// ── Existing actions ──────────────────────────────────────────
+export async function signUp(
+  _prevState: BasicState,
+  formData: FormData
+): Promise<BasicState> {
+  const supabase = await createClient();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
   const { error } = await supabase.auth.signUp({ email, password });
 
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
   redirect("/dashboard");
 }
 
 export async function signIn(
-  _prevState: { error: string } | null,
+  _prevState: BasicState,
   formData: FormData
-) {
+): Promise<BasicState> {
   const supabase = await createClient();
-
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
   redirect("/dashboard");
 }
@@ -47,22 +50,18 @@ export async function signOut() {
   redirect("/login");
 }
 
-
-// Agrega estas dos funciones al final de features/auth/actions.ts
-
+// ── Password reset ────────────────────────────────────────────
 export async function requestPasswordReset(
-  _prevState: { error: string; success: boolean } | null,
+  _prevState: AuthActionState,
   formData: FormData
-) {
+): Promise<AuthActionState> {
   const supabase = await createClient();
   const email = formData.get("email") as string;
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    // ← Esta URL debe estar en Supabase Dashboard → Authentication → URL Configuration → Redirect URLs
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
   });
 
-  // Siempre retornamos success aunque el email no exista — evita user enumeration
   if (error) {
     console.error("resetPasswordForEmail error:", error.message);
   }
@@ -71,9 +70,9 @@ export async function requestPasswordReset(
 }
 
 export async function updatePassword(
-  _prevState: { error: string; success: boolean } | null,
+  _prevState: AuthActionState,
   formData: FormData
-) {
+): Promise<AuthActionState> {
   const supabase = await createClient();
   const password = formData.get("password") as string;
   const confirm = formData.get("confirm") as string;
@@ -88,9 +87,7 @@ export async function updatePassword(
 
   const { error } = await supabase.auth.updateUser({ password });
 
-  if (error) {
-    return { error: error.message, success: false };
-  }
+  if (error) return { error: error.message, success: false };
 
   redirect("/dashboard");
 }

@@ -1,12 +1,15 @@
 // app/(auth)/forgot-password/page.tsx este archivo
-"use client"; 
-  
+"use client";
+
 import { useActionState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/features/auth/actions";
 
 export default function ForgotPasswordPage() {
-    const [state, action, pending] = useActionState(requestPasswordReset, null);
+    const [state, action, pending] = useActionState(requestPasswordReset, {
+        error: null,
+        success: false,
+    })
 
     if (state?.success) {
         return (
