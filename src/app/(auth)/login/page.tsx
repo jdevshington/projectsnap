@@ -47,6 +47,12 @@ export default function LoginPage() {
             )}
           </button>
         </div>
+        
+        <div className="text-right">
+          <Link href="/forgot-password" className="text-xs text-[#6F6F6C] underline underline-offset-2">
+            Forgot password?
+          </Link>
+        </div>
 
         {state?.error && (
           <p role="alert" className="text-sm text-red-500">
