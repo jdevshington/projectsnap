@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
                     </div>
                     <h1 className="mb-2 text-xl font-semibold text-[#111110]">Check your email</h1>
                     <p className="text-sm text-[#6F6F6C] leading-relaxed">
-                        If that email is registered, you&apos;ll receive a reset link shortly.
+                        If that email is registered, you will receive a reset link shortly.
                         Check your spam folder if you don&apos;t see it.
                     </p>
                 </div>
