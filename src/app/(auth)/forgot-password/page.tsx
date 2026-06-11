@@ -1,6 +1,6 @@
-// app/(auth)/forgot-password/page.tsx
-"use client";
-
+// app/(auth)/forgot-password/page.tsx este archivo
+"use client"; 
+  
 import { useActionState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/features/auth/actions";
