@@ -7,4 +7,5 @@ export type ApartmentRecord = {
   location: string;
   notes: string | null;
   created_at: string;
+  updated_at: string | null;
 };

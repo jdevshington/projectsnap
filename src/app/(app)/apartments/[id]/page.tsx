@@ -51,8 +51,26 @@ export default async function ApartmentDetailPage({ params }: Props) {
         day: "numeric",
       }),
     },
+    {
+      icon: Calendar,
+      label: "Last updated",
+      value: new Date(
+        apartment.updated_at ?? apartment.created_at
+      ).toLocaleDateString([], {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    },
     ...(apartment.notes
-      ? [{ icon: FileText, label: "Notes", value: apartment.notes }]
+      ? [
+        {
+          icon: FileText,
+          label: "Notes",
+          value: apartment.notes,
+        },
+      ]
       : []),
   ];
 
@@ -67,9 +85,28 @@ export default async function ApartmentDetailPage({ params }: Props) {
         Apartments
       </Link>
 
-      <h1 className="mb-6 text-xl font-semibold tracking-tight text-[#111110]">
-        Apt {apartment.apartment_number}
-      </h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-semibold tracking-tight text-[#111110]">
+          Apt {apartment.apartment_number}
+        </h1>
+
+        <Link
+          href={`/apartments/${apartment.id}/edit`}
+          className="
+      rounded-lg
+      border
+      border-[#E2E2E0]
+      px-3
+      py-2
+      text-sm
+      font-medium
+      transition
+      hover:bg-[#F9F9F8]
+    "
+        >
+          Edit
+        </Link>
+      </div>
 
       <div className="rounded-xl border border-[#E2E2E0] bg-white divide-y divide-[#F0F0EE]">
         {fields.map(({ icon: Icon, label, value }) => (
