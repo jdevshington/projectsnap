@@ -15,9 +15,15 @@ export async function createClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Silenciado intencionalmente — setAll se invoca desde
+            // Server Components donde escribir cookies no está permitido.
+            // El middleware es quien refresca la sesión.
+          }
         },
       },
     }
