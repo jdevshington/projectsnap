@@ -41,6 +41,7 @@ export default async function ApartmentDetailPage({ params }: Props) {
       label: "Location",
       value: apartment.location,
     },
+    // Solo estos dos fields cambian:
     {
       icon: Calendar,
       label: "Recorded on",
@@ -49,6 +50,9 @@ export default async function ApartmentDetailPage({ params }: Props) {
         year: "numeric",
         month: "long",
         day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
       }),
     },
     {
@@ -61,16 +65,19 @@ export default async function ApartmentDetailPage({ params }: Props) {
         year: "numeric",
         month: "long",
         day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
       }),
     },
     ...(apartment.notes
       ? [
-        {
-          icon: FileText,
-          label: "Notes",
-          value: apartment.notes,
-        },
-      ]
+          {
+            icon: FileText,
+            label: "Notes",
+            value: apartment.notes,
+          },
+        ]
       : []),
   ];
 

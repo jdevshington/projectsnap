@@ -81,6 +81,8 @@ export default async function ApartmentsPage() {
                   {new Date(apt.created_at).toLocaleDateString([], {
                     month: "short",
                     day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
                   })}
                 </span>
                 <ChevronRight
