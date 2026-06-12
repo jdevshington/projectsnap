@@ -1,5 +1,7 @@
 // features/work-sessions/components/session-history.tsx
 
+"use client"
+
 import { Clock } from "lucide-react";
 import { formatDate, formatTime, formatDurationFromMinutes } from "../utils";
 import type { CompletedSession } from "../types";
