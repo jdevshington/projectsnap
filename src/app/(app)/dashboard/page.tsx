@@ -27,7 +27,8 @@ export default async function DashboardPage() {
 
   const needsName = !profile?.full_name?.trim();
   // Nombre a mostrar en el header
-  const displayName = profile?.full_name?.trim() || user!.email;
+  const fullName = profile?.full_name?.trim() || user!.email!;
+  const displayName = fullName.split(" ")[0];
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8">
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
             </span>
             <span className="font-bold text-[#E8FF57]">·</span>
           </div>
-          <p className="mt-0.5 text-sm text-[#6F6F6C]">{displayName}</p>
+          <p className="mt-0.5 text-sm text-[#6F6F6C]">Hi, {displayName}</p>
         </div>
         <LogoutButton />
       </div>
