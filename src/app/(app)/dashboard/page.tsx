@@ -1,34 +1,39 @@
 // app/(app)/dashboard/page.tsx
-
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import {
   getActiveSession,
   getCompletedSessions,
 } from "@/features/work-sessions/queries";
+import { getProfile } from "@/features/profile/queries";
 import { ActiveSessionCard } from "@/features/work-sessions/components/active-session-card";
 import { StartSessionCard } from "@/features/work-sessions/components/start-session-card";
 import { SessionHistory } from "@/features/work-sessions/components/session-history";
+import { NamePromptModal } from "@/features/profile/components/name-prompt-modal";
 
-export const metadata = {
-  title: "Home",
-};
+export const metadata = { title: "Home" };
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // user is guaranteed by (app)/layout.tsx — safe to assert
-  const [activeSession, completedSessions] = await Promise.all([
+  const [activeSession, completedSessions, profile] = await Promise.all([
     getActiveSession(user!.id),
     getCompletedSessions(user!.id),
+    getProfile(user!.id),
   ]);
+
+  const needsName = !profile?.full_name?.trim();
+  // Nombre a mostrar en el header
+  const displayName = profile?.full_name?.trim() || user!.email;
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8">
+      {/* Modal condicional */}
+      {needsName && <NamePromptModal />}
+
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
@@ -38,7 +43,7 @@ export default async function DashboardPage() {
             </span>
             <span className="font-bold text-[#E8FF57]">·</span>
           </div>
-          <p className="mt-0.5 text-sm text-[#6F6F6C]">{user!.email}</p>
+          <p className="mt-0.5 text-sm text-[#6F6F6C]">{displayName}</p>
         </div>
         <LogoutButton />
       </div>
