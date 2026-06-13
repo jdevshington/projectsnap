@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getApartments } from "@/features/apartments/queries";
 import { Building2, ChevronRight, Plus } from "lucide-react";
+import { formatDate } from "@/lib/format";
 
 export const metadata = {
   title: "Apartments",
@@ -78,12 +79,7 @@ export default async function ApartmentsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-[#ADADAA]">
-                  {new Date(apt.created_at).toLocaleDateString([], {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
+                  {formatDate(apt.created_at)}
                 </span>
                 <ChevronRight
                   size={14}

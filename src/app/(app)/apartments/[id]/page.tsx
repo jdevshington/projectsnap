@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getApartmentById } from "@/features/apartments/queries";
+import { formatDateTime } from "@/lib/format";
 import {
   ChevronLeft,
   Building2,
@@ -45,30 +46,12 @@ export default async function ApartmentDetailPage({ params }: Props) {
     {
       icon: Calendar,
       label: "Recorded on",
-      value: new Date(apartment.created_at).toLocaleDateString([], {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
+      value: formatDateTime(apartment.created_at),
     },
     {
       icon: Calendar,
       label: "Last updated",
-      value: new Date(
-        apartment.updated_at ?? apartment.created_at
-      ).toLocaleDateString([], {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
+      value: formatDateTime(apartment.updated_at ?? apartment.created_at),
     },
     ...(apartment.notes
       ? [
