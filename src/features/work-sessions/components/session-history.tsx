@@ -1,9 +1,10 @@
 // features/work-sessions/components/session-history.tsx
 
-"use client"
+"use client";
 
 import { Clock } from "lucide-react";
 import { formatDate, formatTime, formatDurationFromMinutes } from "../utils";
+import { useI18n } from "@/lib/i18n/context";
 import type { CompletedSession } from "../types";
 
 interface Props {
@@ -11,10 +12,12 @@ interface Props {
 }
 
 export function SessionHistory({ sessions }: Props) {
+  const { t } = useI18n();
+
   if (sessions.length === 0) {
     return (
       <div className="rounded-xl border border-[#E2E2E0] bg-white px-5 py-8 text-center">
-        <p className="text-sm text-[#6F6F6C]">No completed sessions yet.</p>
+        <p className="text-sm text-[#6F6F6C]">{t("session.noCompleted")}</p>
       </div>
     );
   }

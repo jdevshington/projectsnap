@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getApartmentById } from "@/features/apartments/queries";
 import { formatDateTime } from "@/lib/format";
+import { getT } from "@/lib/i18n/server";
 import {
   ChevronLeft,
   Building2,
@@ -13,9 +14,7 @@ import {
   Calendar,
 } from "lucide-react";
 
-export const metadata = {
-  title: "Apartment Record",
-};
+export const metadata = { title: "Apartment Record" };
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -28,36 +27,39 @@ export default async function ApartmentDetailPage({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const apartment = await getApartmentById(id, user!.id);
+  const [apartment, { t }] = await Promise.all([
+    getApartmentById(id, user!.id),
+    getT(),
+  ]);
+
   if (!apartment) notFound();
 
   const fields = [
     {
       icon: Building2,
-      label: "Apartment number",
+      label: t("apartments.aptNumber"),
       value: apartment.apartment_number,
     },
     {
       icon: MapPin,
-      label: "Location",
+      label: t("apartments.location"),
       value: apartment.location,
     },
-    // Solo estos dos fields cambian:
     {
       icon: Calendar,
-      label: "Recorded on",
+      label: t("apartments.recordedOn"),
       value: formatDateTime(apartment.created_at),
     },
     {
       icon: Calendar,
-      label: "Last updated",
+      label: t("apartments.lastUpdated"),
       value: formatDateTime(apartment.updated_at ?? apartment.created_at),
     },
     ...(apartment.notes
       ? [
           {
             icon: FileText,
-            label: "Notes",
+            label: t("apartments.notes"),
             value: apartment.notes,
           },
         ]
@@ -66,35 +68,23 @@ export default async function ApartmentDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8">
-      {/* Back link */}
       <Link
         href="/apartments"
         className="mb-6 flex items-center gap-1 text-sm text-[#6F6F6C] transition hover:text-[#111110]"
       >
         <ChevronLeft size={15} strokeWidth={1.75} />
-        Apartments
+        {t("common.back")}
       </Link>
 
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight text-[#111110]">
           Apt {apartment.apartment_number}
         </h1>
-
         <Link
           href={`/apartments/${apartment.id}/edit`}
-          className="
-      rounded-lg
-      border
-      border-[#E2E2E0]
-      px-3
-      py-2
-      text-sm
-      font-medium
-      transition
-      hover:bg-[#F9F9F8]
-    "
+          className="rounded-lg border border-[#E2E2E0] px-3 py-2 text-sm font-medium transition hover:bg-[#F9F9F8]"
         >
-          Edit
+          {t("apartments.edit")}
         </Link>
       </div>
 

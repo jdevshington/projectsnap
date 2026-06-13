@@ -5,10 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getApartments } from "@/features/apartments/queries";
 import { Building2, ChevronRight, Plus } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { getT } from "@/lib/i18n/server";
 
-export const metadata = {
-  title: "Apartments",
-};
+export const metadata = { title: "Apartments" };
 
 export default async function ApartmentsPage() {
   const supabase = await createClient();
@@ -16,25 +15,26 @@ export default async function ApartmentsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const apartments = await getApartments(user!.id);
+  const [apartments, { t }] = await Promise.all([
+    getApartments(user!.id),
+    getT(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8">
-      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight text-[#111110]">
-          Apartments
+          {t("apartments.title")}
         </h1>
         <Link
           href="/apartments/new"
           className="flex items-center gap-1.5 rounded-lg bg-[#1A1A19] px-3.5 py-2 text-sm font-medium text-white transition hover:bg-[#111110]"
         >
           <Plus size={14} strokeWidth={2} />
-          Add record
+          {t("apartments.addRecord")}
         </Link>
       </div>
 
-      {/* List */}
       {apartments.length === 0 ? (
         <div className="rounded-xl border border-[#E2E2E0] bg-white px-5 py-10 text-center">
           <Building2
@@ -42,16 +42,18 @@ export default async function ApartmentsPage() {
             strokeWidth={1.5}
             className="mx-auto mb-3 text-[#ADADAA]"
           />
-          <p className="text-sm font-medium text-[#111110]">No records yet</p>
+          <p className="text-sm font-medium text-[#111110]">
+            {t("apartments.noRecords")}
+          </p>
           <p className="mt-1 text-sm text-[#6F6F6C]">
-            Add your first apartment record.
+            {t("apartments.noRecordsPrompt")}
           </p>
           <Link
             href="/apartments/new"
             className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#1A1A19] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#111110]"
           >
             <Plus size={14} strokeWidth={2} />
-            Add record
+            {t("apartments.addRecord")}
           </Link>
         </div>
       ) : (

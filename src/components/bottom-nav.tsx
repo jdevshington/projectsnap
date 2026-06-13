@@ -5,16 +5,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, Building2, History, User } from "lucide-react";
-
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Home", icon: House },
-  { href: "/apartments", label: "Apartments", icon: Building2 },
-  { href: "/history", label: "History", icon: History },
-  { href: "/profile", label: "Profile", icon: User },
-] as const;
+import { useI18n } from "@/lib/i18n/context";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
+
+  const NAV_ITEMS = [
+    { href: "/dashboard", label: t("nav.home"), icon: House },
+    { href: "/apartments", label: t("nav.apartments"), icon: Building2 },
+    { href: "/history", label: t("nav.history"), icon: History },
+    { href: "/profile", label: t("nav.profile"), icon: User },
+  ] as const;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E2E2E0] bg-white">

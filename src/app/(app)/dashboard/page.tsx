@@ -1,4 +1,5 @@
 // app/(app)/dashboard/page.tsx
+
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import {
@@ -10,6 +11,8 @@ import { ActiveSessionCard } from "@/features/work-sessions/components/active-se
 import { StartSessionCard } from "@/features/work-sessions/components/start-session-card";
 import { SessionHistory } from "@/features/work-sessions/components/session-history";
 import { NamePromptModal } from "@/features/profile/components/name-prompt-modal";
+import { LocaleToggle } from "@/components/locale-toggle";
+import { getT } from "@/lib/i18n/server";
 
 export const metadata = { title: "Home" };
 
@@ -19,23 +22,21 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [activeSession, completedSessions, profile] = await Promise.all([
+  const [activeSession, completedSessions, profile, { t }] = await Promise.all([
     getActiveSession(user!.id),
     getCompletedSessions(user!.id),
     getProfile(user!.id),
+    getT(),
   ]);
 
   const needsName = !profile?.full_name?.trim();
-  // Nombre a mostrar en el header
   const fullName = profile?.full_name?.trim() || user!.email!;
   const displayName = fullName.split(" ")[0];
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8">
-      {/* Modal condicional */}
       {needsName && <NamePromptModal />}
 
-      {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-1">
@@ -44,12 +45,16 @@ export default async function DashboardPage() {
             </span>
             <span className="font-bold text-[#E8FF57]">·</span>
           </div>
-          <p className="mt-0.5 text-sm text-[#6F6F6C]">Hi, {displayName}</p>
+          <p className="mt-0.5 text-sm text-[#6F6F6C]">
+            {t("dashboard.hi")}, {displayName}
+          </p>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-2">
+          <LocaleToggle />
+          <LogoutButton />
+        </div>
       </div>
 
-      {/* Session control */}
       <section className="mb-6">
         {activeSession ? (
           <ActiveSessionCard session={activeSession} />
@@ -58,10 +63,9 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* History */}
       <section>
         <h2 className="mb-3 text-xs font-medium uppercase tracking-widest text-[#6F6F6C]">
-          Recent sessions
+          {t("dashboard.recentSessions")}
         </h2>
         <SessionHistory sessions={completedSessions} />
       </section>

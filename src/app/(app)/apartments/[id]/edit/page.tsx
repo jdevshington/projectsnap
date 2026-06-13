@@ -1,50 +1,46 @@
+// app/(app)/apartments/[id]/edit/page.tsx
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-
 import { createClient } from "@/lib/supabase/server";
 import { getApartmentById } from "@/features/apartments/queries";
 import { ApartmentForm } from "@/features/apartments/components/apartment-form";
+import { getT } from "@/lib/i18n/server";
 
 interface Props {
-    params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
 
-export default async function EditApartmentPage({
-    params,
-}: Props) {
-    const { id } = await params;
+export default async function EditApartmentPage({ params }: Props) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    const supabase = await createClient();
+  const [apartment, { t }] = await Promise.all([
+    getApartmentById(id, user!.id),
+    getT(),
+  ]);
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+  if (!apartment) notFound();
 
-    const apartment = await getApartmentById(
-        id,
-        user!.id
-    );
+  return (
+    <main className="mx-auto w-full max-w-lg px-4 py-8">
+      <Link
+        href={`/apartments/${id}`}
+        className="mb-6 flex items-center gap-1 text-sm text-[#6F6F6C] transition hover:text-[#111110]"
+      >
+        <ChevronLeft size={15} strokeWidth={1.75} />
+        {t("common.back")}
+      </Link>
 
-    if (!apartment) {
-        notFound();
-    }
+      <h1 className="mb-6 text-xl font-semibold tracking-tight text-[#111110]">
+        {t("apartments.editApartment")}
+      </h1>
 
-    return (
-        <main className="mx-auto w-full max-w-lg px-4 py-8">
-            <Link
-                href={`/apartments/${id}`}
-                className="mb-6 flex items-center gap-1 text-sm text-[#6F6F6C]"
-            >
-                <ChevronLeft size={15} />
-                Apartment
-            </Link>
-
-            <h1 className="mb-6 text-xl font-semibold tracking-tight">
-                Edit apartment
-            </h1>
-
-            <ApartmentForm apartment={apartment} />
-        </main>
-    );
+      <ApartmentForm apartment={apartment} />
+    </main>
+  );
 }
