@@ -14,15 +14,6 @@ export default function ForgotPasswordPage() {
     if (state?.success) {
         return (
             <main className="mx-auto max-w-md px-6 pt-16 pb-6">
-                <div className="mb-6">
-                    <div className="flex items-center gap-1 mb-1">
-                        <span className="font-mono text-base font-semibold tracking-tight text-[#111110]">
-                            ProjectSnap
-                        </span>
-                        <span className="font-bold text-[#E8FF57]">·</span>
-                    </div>
-                </div>
-
                 <div className="rounded-2xl border border-[#E2E2E0] bg-white p-6">
                     <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#F0F0EE]">
                         <span className="text-lg">✉️</span>
@@ -47,12 +38,6 @@ export default function ForgotPasswordPage() {
         <main className="mx-auto max-w-md px-6 pt-16 pb-6">
             {/* Header */}
             <div className="mb-8">
-                <div className="flex items-center gap-1 mb-1">
-                    <span className="font-mono text-base font-semibold tracking-tight text-[#111110]">
-                        ProjectSnap
-                    </span>
-                    <span className="font-bold text-[#E8FF57]">·</span>
-                </div>
                 <h1 className="text-2xl font-semibold text-[#111110]">Reset password</h1>
                 <p className="mt-1 text-sm text-[#6F6F6C]">
                     Enter your email and we&apos;ll send you a link.

@@ -5,14 +5,6 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-md flex-col items-center justify-center px-6 text-center">
-      {/* Logo */}
-      <div className="mb-12 flex items-center gap-0.5">
-        <span className="font-mono text-base font-semibold tracking-tight text-[#111110]">
-          Project<span className="text-[#E8FF57]">Snap</span>
-        </span>
-        <span className="font-bold text-[#E8FF57]">·</span>
-      </div>
-
       {/* Code */}
       <p className="font-mono text-8xl font-bold tracking-tighter text-[#111110]">
         404
