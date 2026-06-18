@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
                 <p className="mt-1 text-sm text-[#6F6F6C]">Choose something strong.</p>
             </div>
 
-            <form action={action} className="space-y-3" noValidate>
+            <form action={action} className="space-y-3">
                 {/* Password */}
                 <div className="relative">
                     <input

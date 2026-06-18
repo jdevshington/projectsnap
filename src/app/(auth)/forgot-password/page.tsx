@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
             </div>
 
             {/* Form */}
-            <form action={action} className="space-y-4" noValidate>
+            <form action={action} className="space-y-4">
                 <input
                     name="email"
                     type="email"
