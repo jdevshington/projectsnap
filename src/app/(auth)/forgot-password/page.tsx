@@ -45,13 +45,13 @@ export default function ForgotPasswordPage() {
             </div>
 
             {/* Form */}
-            <form action={action} className="space-y-3" noValidate>
+            <form action={action} className="space-y-4" noValidate>
                 <input
                     name="email"
                     type="email"
                     placeholder="Email"
                     autoComplete="email"
-                    className="w-full rounded-xl border border-[#E2E2E0] bg-white px-4 py-3 text-sm text-[#111110] placeholder:text-[#ADADAA] focus:border-[#111110] focus:outline-none transition-colors"
+                    className="w-full rounded border p-3 border-[#E2E2E0] bg-white text-sm text-[#111110] placeholder:text-[#ADADAA] focus:border-[#111110] focus:outline-none transition-colors"
                     required
                 />
 
@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
                 <button
                     type="submit"
                     disabled={pending}
-                    className="w-full rounded-xl bg-[#111110] py-3 text-sm font-medium text-white disabled:opacity-50 transition-opacity"
+                    className="w-full rounded bg-black p-3 text-white disabled:opacity-50"
                 >
                     {pending ? "Sending…" : "Send reset link"}
                 </button>
