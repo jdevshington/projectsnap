@@ -12,6 +12,7 @@ import {
   MapPin,
   FileText,
   Calendar,
+  ImageIcon,
 } from "lucide-react";
 
 export const metadata = { title: "Apartment Record" };
@@ -56,13 +57,7 @@ export default async function ApartmentDetailPage({ params }: Props) {
       value: formatDateTime(apartment.updated_at ?? apartment.created_at),
     },
     ...(apartment.notes
-      ? [
-          {
-            icon: FileText,
-            label: t("apartments.notes"),
-            value: apartment.notes,
-          },
-        ]
+      ? [{ icon: FileText, label: t("apartments.notes"), value: apartment.notes }]
       : []),
   ];
 
@@ -88,6 +83,7 @@ export default async function ApartmentDetailPage({ params }: Props) {
         </Link>
       </div>
 
+      {/* Fields */}
       <div className="rounded-xl border border-[#E2E2E0] bg-white divide-y divide-[#F0F0EE]">
         {fields.map(({ icon: Icon, label, value }) => (
           <div key={label} className="flex items-start gap-4 px-5 py-4">
@@ -105,6 +101,36 @@ export default async function ApartmentDetailPage({ params }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Photos */}
+      {apartment.photos.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <ImageIcon size={14} strokeWidth={1.75} className="text-[#ADADAA]" />
+            <p className="text-xs font-medium uppercase tracking-widest text-[#6F6F6C]">
+              Photos ({apartment.photos.length})
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {apartment.photos.map((photo) => (
+              <a
+                key={photo.id}
+                href={photo.public_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="aspect-square overflow-hidden rounded-lg border border-[#E2E2E0] bg-[#F9F9F8]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.public_url}
+                  alt={`Photo ${photo.id}`}
+                  className="h-full w-full object-cover transition hover:opacity-90"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

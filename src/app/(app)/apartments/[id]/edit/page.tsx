@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getApartmentById } from "@/features/apartments/queries";
 import { ApartmentForm } from "@/features/apartments/components/apartment-form";
+import { PhotoManager } from "@/features/apartments/components/photo-manager";
 import { getT } from "@/lib/i18n/server";
 
 interface Props {
@@ -40,6 +41,14 @@ export default async function EditApartmentPage({ params }: Props) {
         {t("apartments.editApartment")}
       </h1>
 
+      {/* Existing photos — delete from here */}
+      {apartment.photos.length > 0 && (
+        <div className="mb-6 rounded-xl border border-[#E2E2E0] bg-white p-4">
+          <PhotoManager photos={apartment.photos} />
+        </div>
+      )}
+
+      {/* Form — edit fields + add new photos */}
       <ApartmentForm apartment={apartment} />
     </main>
   );

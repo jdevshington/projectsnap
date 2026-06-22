@@ -1,7 +1,7 @@
 // features/apartments/queries.ts
 
 import { createClient } from "@/lib/supabase/server";
-import type { ApartmentRecord } from "./types";
+import type { ApartmentRecord, ApartmentRecordWithPhotos } from "./types";
 
 export async function getApartments(
   userId: string
@@ -21,16 +21,21 @@ export async function getApartments(
 export async function getApartmentById(
   id: string,
   userId: string
-): Promise<ApartmentRecord | null> {
+): Promise<ApartmentRecordWithPhotos | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("apartment_records")
-    .select("*")
+    .select("*, photos(*)")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  return data;
+  if (!data) return null;
+
+  return {
+    ...data,
+    photos: data.photos ?? [],
+  };
 }

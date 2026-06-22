@@ -1,10 +1,10 @@
+// features/apartments/components/apartment-form.tsx
+
 "use client";
 
 import { useActionState } from "react";
-import {
-  createApartment,
-  updateApartment,
-} from "../actions";
+import { createApartment, updateApartment } from "../actions";
+import { PhotoUpload } from "./photo-upload";
 
 type ApartmentFormProps = {
   apartment?: {
@@ -15,17 +15,12 @@ type ApartmentFormProps = {
   };
 };
 
-export function ApartmentForm({
-  apartment,
-}: ApartmentFormProps) {
+export function ApartmentForm({ apartment }: ApartmentFormProps) {
   const formAction = apartment
     ? updateApartment.bind(null, apartment.id)
     : createApartment;
 
-  const [state, action, pending] = useActionState(
-    formAction,
-    null
-  );
+  const [state, action, pending] = useActionState(formAction, null);
 
   return (
     <form action={action} className="space-y-4" noValidate>
@@ -36,7 +31,6 @@ export function ApartmentForm({
         >
           Apartment number
         </label>
-
         <input
           id="apartment_number"
           name="apartment_number"
@@ -55,7 +49,6 @@ export function ApartmentForm({
         >
           Location
         </label>
-
         <input
           id="location"
           name="location"
@@ -74,7 +67,6 @@ export function ApartmentForm({
         >
           Notes
         </label>
-
         <textarea
           id="notes"
           name="notes"
@@ -85,24 +77,22 @@ export function ApartmentForm({
         />
       </div>
 
-      {state?.error && (
-        <p className="text-sm text-red-500">
-          {state.error}
-        </p>
-      )}
+      <PhotoUpload />
+
+      {state?.error && <p className="text-sm text-red-500">{state.error}</p>}
 
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-[#1A1A19] px-4 py-2.5 text-sm font-medium text-white"
+        className="w-full rounded-lg bg-[#1A1A19] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
       >
         {pending
           ? apartment
             ? "Saving changes..."
             : "Saving..."
           : apartment
-            ? "Save changes"
-            : "Save record"}
+          ? "Save changes"
+          : "Save record"}
       </button>
     </form>
   );
