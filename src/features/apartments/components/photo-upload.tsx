@@ -25,7 +25,6 @@ export function PhotoUpload() {
 
     setPreviews((prev) => [...prev, ...newPreviews]);
 
-    // Reset input so same file can be re-selected
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -96,13 +95,12 @@ export function PhotoUpload() {
         {previews.length === 0 ? "Add photos" : "Add more"}
       </button>
 
-      {/* Hidden input for camera/gallery picker */}
+      {/* Picker — sin capture para que iOS muestre el sheet nativo */}
       <input
         ref={inputRef}
         type="file"
         name="photos"
         accept="image/*"
-        capture="environment"
         multiple
         className="hidden"
         onChange={handleChange}
