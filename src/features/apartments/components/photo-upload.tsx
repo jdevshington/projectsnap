@@ -10,21 +10,67 @@ interface Preview {
   url: string;
 }
 
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const MAX = 1920;
+      let { width, height } = img;
+
+      if (width > MAX || height > MAX) {
+        if (width > height) {
+          height = Math.round((height * MAX) / width);
+          width = MAX;
+        } else {
+          width = Math.round((width * MAX) / height);
+          height = MAX;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob(
+        (blob) => {
+          resolve(
+            new File([blob!], file.name.replace(/\.[^.]+$/, ".jpg"), {
+              type: "image/jpeg",
+            })
+          );
+        },
+        "image/jpeg",
+        0.82
+      );
+    };
+
+    img.src = url;
+  });
+}
+
 export function PhotoUpload() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<Preview[]>([]);
+  const [compressing, setCompressing] = useState(false);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
 
-    const newPreviews = files.map((file) => ({
+    setCompressing(true);
+    const compressed = await Promise.all(files.map(compressImage));
+    setCompressing(false);
+
+    const newPreviews = compressed.map((file) => ({
       file,
       url: URL.createObjectURL(file),
     }));
 
     setPreviews((prev) => [...prev, ...newPreviews]);
-
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -89,13 +135,17 @@ export function PhotoUpload() {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex items-center gap-2 rounded-lg border border-dashed border-[#E2E2E0] px-4 py-3 text-sm text-[#6F6F6C] transition hover:border-[#111110] hover:text-[#111110]"
+        disabled={compressing}
+        className="flex items-center gap-2 rounded-lg border border-dashed border-[#E2E2E0] px-4 py-3 text-sm text-[#6F6F6C] transition hover:border-[#111110] hover:text-[#111110] disabled:opacity-50"
       >
         <Camera size={15} strokeWidth={1.75} />
-        {previews.length === 0 ? "Add photos" : "Add more"}
+        {compressing
+          ? "Processing..."
+          : previews.length === 0
+          ? "Add photos"
+          : "Add more"}
       </button>
 
-      {/* Picker — sin capture para que iOS muestre el sheet nativo */}
       <input
         ref={inputRef}
         type="file"
