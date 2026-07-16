@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCompletedSessions } from "@/features/work-sessions/queries";
 import { SessionHistory } from "@/features/work-sessions/components/session-history";
 import { getT } from "@/lib/i18n/server";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: "History" };
 
@@ -12,9 +13,10 @@ export default async function HistoryPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const [sessions, { t }] = await Promise.all([
-    getCompletedSessions(user!.id, 50),
+    getCompletedSessions(user.id, 50),
     getT(),
   ]);
 

@@ -1,8 +1,7 @@
-// app/(app)/profile/page.tsx
-
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import { getT } from "@/lib/i18n/server";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: "Profile" };
 
@@ -11,6 +10,7 @@ export default async function ProfilePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
   const { t } = await getT();
 
   return (
@@ -23,13 +23,13 @@ export default async function ProfilePage() {
         <div className="px-5 py-4">
           <p className="text-xs text-[#6F6F6C]">{t("profile.email")}</p>
           <p className="mt-0.5 text-sm font-medium text-[#111110]">
-            {user!.email}
+            {user.email}
           </p>
         </div>
         <div className="px-5 py-4">
           <p className="text-xs text-[#6F6F6C]">{t("profile.accountId")}</p>
           <p className="mt-0.5 font-mono text-xs text-[#6F6F6C] break-all">
-            {user!.id}
+            {user.id}
           </p>
         </div>
       </div>

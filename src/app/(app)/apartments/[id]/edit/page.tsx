@@ -1,5 +1,3 @@
-// app/(app)/apartments/[id]/edit/page.tsx
-
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -8,6 +6,7 @@ import { getApartmentById } from "@/features/apartments/queries";
 import { ApartmentForm } from "@/features/apartments/components/apartment-form";
 import { PhotoManager } from "@/features/apartments/components/photo-manager";
 import { getT } from "@/lib/i18n/server";
+import { redirect } from "next/navigation";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -19,9 +18,10 @@ export default async function EditApartmentPage({ params }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const [apartment, { t }] = await Promise.all([
-    getApartmentById(id, user!.id),
+    getApartmentById(id, user.id),
     getT(),
   ]);
 

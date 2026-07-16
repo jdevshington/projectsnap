@@ -1,5 +1,3 @@
-// app/(app)/dashboard/page.tsx
-
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import {
@@ -13,6 +11,7 @@ import { SessionHistory } from "@/features/work-sessions/components/session-hist
 import { NamePromptModal } from "@/features/profile/components/name-prompt-modal";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { getT } from "@/lib/i18n/server";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: "Home" };
 
@@ -21,16 +20,17 @@ export default async function DashboardPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const [activeSession, completedSessions, profile, { t }] = await Promise.all([
-    getActiveSession(user!.id),
-    getCompletedSessions(user!.id),
-    getProfile(user!.id),
+    getActiveSession(user.id),
+    getCompletedSessions(user.id),
+    getProfile(user.id),
     getT(),
   ]);
 
   const needsName = !profile?.full_name?.trim();
-  const fullName = profile?.full_name?.trim() || user!.email!;
+  const fullName = profile?.full_name?.trim() || user.email;
   const displayName = fullName.split(" ")[0];
 
   return (

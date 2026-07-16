@@ -1,5 +1,3 @@
-// app/(app)/apartments/[id]/page.tsx
-
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -14,6 +12,7 @@ import {
   Calendar,
   ImageIcon,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: "Apartment Record" };
 
@@ -27,9 +26,10 @@ export default async function ApartmentDetailPage({ params }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const [apartment, { t }] = await Promise.all([
-    getApartmentById(id, user!.id),
+    getApartmentById(id, user.id),
     getT(),
   ]);
 
