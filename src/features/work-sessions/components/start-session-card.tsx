@@ -7,6 +7,7 @@ import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { startSession } from "../actions";
 import { useI18n } from "@/lib/i18n/context";
+import { toast } from "sonner";
 
 export function StartSessionCard() {
   const [isPending, startTransition] = useTransition();
@@ -14,7 +15,12 @@ export function StartSessionCard() {
 
   function handleStart() {
     startTransition(async () => {
-      await startSession();
+      const result = await startSession();
+      if ("error" in result) {
+        toast.error(result.error);
+      } else {
+        toast.success("Session started.");
+      }
     });
   }
 

@@ -9,6 +9,7 @@ import { endSession } from "../actions";
 import { useElapsed } from "./use-elapsed";
 import { formatDuration, formatTime } from "../utils";
 import { useI18n } from "@/lib/i18n/context";
+import { toast } from "sonner";
 import type { ActiveSession } from "../types";
 
 interface Props {
@@ -22,7 +23,12 @@ export function ActiveSessionCard({ session }: Props) {
 
   function handleEnd() {
     startTransition(async () => {
-      await endSession(session.id);
+      const result = await endSession(session.id);
+      if ("error" in result) {
+        toast.error(result.error);
+      } else {
+        toast.success("Session ended successfully.");
+      }
     });
   }
 

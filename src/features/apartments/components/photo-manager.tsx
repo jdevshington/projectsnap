@@ -5,6 +5,7 @@
 import { useState, useTransition } from "react";
 import { X, ImageIcon } from "lucide-react";
 import { deletePhoto } from "../actions";
+import { toast } from "sonner";
 import type { Photo } from "../types";
 
 interface Props {
@@ -18,8 +19,11 @@ export function PhotoManager({ photos }: Props) {
   function handleDelete(photo: Photo) {
     startTransition(async () => {
       const result = await deletePhoto(photo.id, photo.storage_path);
-      if (!result?.error) {
+      if (result?.error) {
+        toast.error(result.error);
+      } else {
         setCurrent((prev) => prev.filter((p) => p.id !== photo.id));
+        toast.success("Photo deleted.");
       }
     });
   }
