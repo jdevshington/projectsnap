@@ -19,8 +19,9 @@ export function PhotoManager({ photos }: Props) {
   function handleDelete(photo: Photo) {
     startTransition(async () => {
       const result = await deletePhoto(photo.id, photo.storage_path);
-      if (result?.error) {
-        toast.error(result.error);
+      // Solo cambia la condición del resultado:
+      if ("error" in (result ?? {})) {
+        toast.error((result as { error: string }).error);
       } else {
         setCurrent((prev) => prev.filter((p) => p.id !== photo.id));
         toast.success("Photo deleted.");

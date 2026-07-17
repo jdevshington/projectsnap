@@ -3,6 +3,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createApartment, updateApartment } from "../actions";
 import { PhotoUpload } from "./photo-upload";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ type ApartmentFormProps = {
 };
 
 export function ApartmentForm({ apartment }: ApartmentFormProps) {
+  const router = useRouter();
   const formAction = apartment
     ? updateApartment.bind(null, apartment.id)
     : createApartment;
@@ -24,10 +26,23 @@ export function ApartmentForm({ apartment }: ApartmentFormProps) {
   const [state, action, pending] = useActionState(formAction, null);
 
   useEffect(() => {
-    if (state?.error) {
+    if (!state) return;
+
+    if ("error" in state) {
       toast.error(state.error);
     }
-  }, [state]);
+
+    if ("success" in state) {
+      toast.success(state.success);
+      setTimeout(() => {
+        if (apartment) {
+          router.push(`/apartments/${apartment.id}`);
+        } else {
+          router.push("/apartments");
+        }
+      }, 800);
+    }
+  }, [state, apartment, router]);
 
   return (
     <form action={action} className="space-y-4" noValidate>
@@ -87,8 +102,6 @@ export function ApartmentForm({ apartment }: ApartmentFormProps) {
 
         <PhotoUpload />
       </fieldset>
-
-      {state?.error && <p className="text-sm text-red-500">{state.error}</p>}
 
       <button
         type="submit"

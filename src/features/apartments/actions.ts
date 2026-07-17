@@ -5,7 +5,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-type FormState = { error: string } | null;
+type FormState = { error: string } | { success: string } | null;
 
 export async function createApartment(
   _prevState: FormState,
@@ -27,7 +27,6 @@ export async function createApartment(
     return { error: "Apartment number is required." };
   if (!location?.trim()) return { error: "Location is required." };
 
-  // 1. Create the apartment record
   const { data: apartment, error } = await supabase
     .from("apartment_records")
     .insert({
@@ -41,7 +40,6 @@ export async function createApartment(
 
   if (error) return { error: error.message };
 
-  // 2. Upload photos if any
   const validPhotos = photos.filter((f) => f.size > 0);
   if (validPhotos.length > 0) {
     for (const file of validPhotos) {
@@ -106,7 +104,6 @@ export async function updateApartment(
 
   if (error) return { error: error.message };
 
-  // Upload new photos if any
   const validPhotos = photos.filter((f) => f.size > 0);
   if (validPhotos.length > 0) {
     for (const file of validPhotos) {
@@ -158,5 +155,5 @@ export async function deletePhoto(
 
   if (error) return { error: error.message };
 
-  return null;
+  return { success: "Photo deleted." };
 }
