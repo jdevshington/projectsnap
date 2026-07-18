@@ -1,7 +1,10 @@
-// lib/format.ts
+// src/lib/format.ts
 
-export function formatTime(isoString: string): string {
-  return new Date(isoString).toLocaleTimeString("en-US", {
+export function formatTime(
+  isoString: string,
+  locale: string = "en-US"
+): string {
+  return new Date(isoString).toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -9,15 +12,21 @@ export function formatTime(isoString: string): string {
   });
 }
 
-export function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString("en-US", {
+export function formatDate(
+  isoString: string,
+  locale: string = "en-US"
+): string {
+  return new Date(isoString).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
   });
 }
 
-export function formatDateTime(isoString: string): string {
-  return new Date(isoString).toLocaleDateString("en-US", {
+export function formatDateTime(
+  isoString: string,
+  locale: string = "en-US"
+): string {
+  return new Date(isoString).toLocaleDateString(locale, {
     weekday: "long",
     year: "numeric",
     month: "long",
