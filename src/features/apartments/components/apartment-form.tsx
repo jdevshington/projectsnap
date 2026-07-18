@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { createApartment, updateApartment } from "../actions";
 import { PhotoUpload } from "./photo-upload";
 import { toast } from "sonner";
@@ -21,8 +21,17 @@ export function ApartmentForm({ apartment }: ApartmentFormProps) {
     ? updateApartment.bind(null, apartment.id)
     : createApartment;
 
-  const [state, dispatch, pending] = useActionState(formAction, null);
+  const [state, dispatch, actionPending] = useActionState(formAction, null);
   const [files, setFiles] = useState<File[]>([]);
+  const [isTransitionPending, startTransition] = useTransition();
+
+  // useActionState solo actualiza `actionPending` correctamente cuando
+  // dispatch() se invoca dentro de una transición — normalmente eso lo
+  // hace React automáticamente cuando dispatch va directo en el prop
+  // `action` del <form>. Como acá interceptamos el submit para poder
+  // armar el FormData a mano (agregando los archivos del estado
+  // `files`), tenemos que envolver la llamada nosotros mismos.
+  const pending = actionPending || isTransitionPending;
 
   useEffect(() => {
     if (state && "error" in state) {
@@ -33,16 +42,12 @@ export function ApartmentForm({ apartment }: ApartmentFormProps) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    // Los campos de texto se leen del DOM (tienen `name`, el form
-    // sigue siendo nativo); las fotos vienen del estado `files` de
-    // React, no de un <input type="file">. Se arma el FormData a
-    // mano y se despacha directo — dispatch() acepta un FormData sin
-    // necesidad de que venga de un submit nativo, y sigue actualizando
-    // `pending` igual.
     const formData = new FormData(e.currentTarget);
     files.forEach((file) => formData.append("photos", file));
 
-    dispatch(formData);
+    startTransition(() => {
+      dispatch(formData);
+    });
   }
 
   return (
