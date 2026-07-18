@@ -1,4 +1,4 @@
-// features/work-sessions/queries.ts
+// src/features/work-sessions/queries.ts
 
 import { createClient } from "@/lib/supabase/server";
 import type { ActiveSession, CompletedSession } from "./types";
@@ -12,9 +12,12 @@ export async function getActiveSession(
 ): Promise<ActiveSession | null> {
   const supabase = await createClient();
 
+  // Solo id, started_at (usados en ActiveSessionCard) + ended_at/
+  // duration_minutes porque el tipo ActiveSession los exige (siempre
+  // null por el filtro .is("ended_at", null)).
   const { data, error } = await supabase
     .from("work_sessions")
-    .select("*")
+    .select("id, started_at, ended_at, duration_minutes")
     .eq("user_id", userId)
     .is("ended_at", null)
     .order("started_at", { ascending: false })
@@ -36,7 +39,7 @@ export async function getCompletedSessions(
 
   const { data, error } = await supabase
     .from("work_sessions")
-    .select("*")
+    .select("id, started_at, ended_at, duration_minutes")
     .eq("user_id", userId)
     .not("ended_at", "is", null)
     .order("started_at", { ascending: false })
