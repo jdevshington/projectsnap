@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
         pathname: "/storage/v1/object/public/**",
       },
     ],
+    // 50 para los thumbnails de photo-manager (chicos, no necesitan
+    // calidad alta), 75 (default de Next) para el resto.
+    qualities: [50, 75],
   },
 };
 

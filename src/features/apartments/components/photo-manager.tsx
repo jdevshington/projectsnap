@@ -53,6 +53,7 @@ export function PhotoManager({ photos }: Props) {
               src={photo.public_url}
               alt=""
               fill
+              quality={50}
               sizes="(max-width: 640px) 33vw, 200px"
               className="object-cover"
             />
