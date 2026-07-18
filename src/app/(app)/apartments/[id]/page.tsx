@@ -28,7 +28,7 @@ export default async function ApartmentDetailPage({ params }: Props) {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [apartment, { t }] = await Promise.all([
+  const [apartment, { t, locale }] = await Promise.all([
     getApartmentById(id, user.id),
     getT(),
   ]);
@@ -49,12 +49,15 @@ export default async function ApartmentDetailPage({ params }: Props) {
     {
       icon: Calendar,
       label: t("apartments.recordedOn"),
-      value: formatDateTime(apartment.created_at),
+      value: formatDateTime(apartment.created_at, locale),
     },
     {
       icon: Calendar,
       label: t("apartments.lastUpdated"),
-      value: formatDateTime(apartment.updated_at ?? apartment.created_at),
+      value: formatDateTime(
+        apartment.updated_at ?? apartment.created_at,
+        locale
+      ),
     },
     ...(apartment.notes
       ? [
@@ -123,7 +126,7 @@ export default async function ApartmentDetailPage({ params }: Props) {
           </div>
           <div className="grid grid-cols-3 gap-2">
             {apartment.photos.map((photo) => (
-            <a  
+              <a
                 key={photo.id}
                 href={photo.public_url}
                 target="_blank"

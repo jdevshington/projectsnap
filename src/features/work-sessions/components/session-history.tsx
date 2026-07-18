@@ -1,4 +1,4 @@
-// features/work-sessions/components/session-history.tsx
+// src/features/work-sessions/components/session-history.tsx
 
 "use client";
 
@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function SessionHistory({ sessions }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   if (sessions.length === 0) {
     return (
@@ -37,11 +37,11 @@ export function SessionHistory({ sessions }: Props) {
             />
             <div>
               <p className="text-sm font-medium text-[#111110]">
-                {formatDate(session.started_at)}
+                {formatDate(session.started_at, locale)}
               </p>
               <p className="mt-0.5 text-xs text-[#6F6F6C]">
-                {formatTime(session.started_at)} –{" "}
-                {formatTime(session.ended_at)}
+                {formatTime(session.started_at, locale)} –{" "}
+                {formatTime(session.ended_at, locale)}
               </p>
             </div>
           </div>

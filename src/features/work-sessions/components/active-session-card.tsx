@@ -1,4 +1,4 @@
-// features/work-sessions/components/active-session-card.tsx
+// src/features/work-sessions/components/active-session-card.tsx
 
 "use client";
 
@@ -19,7 +19,7 @@ interface Props {
 export function ActiveSessionCard({ session }: Props) {
   const [isPending, startTransition] = useTransition();
   const elapsed = useElapsed(session.started_at);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   function handleEnd() {
     startTransition(async () => {
@@ -51,7 +51,7 @@ export function ActiveSessionCard({ session }: Props) {
       </div>
       <p className="flex items-center gap-1.5 text-sm text-[#6F6F6C]">
         <Timer size={13} strokeWidth={1.75} />
-        {t("session.startedAt")} {formatTime(session.started_at)}
+        {t("session.startedAt")} {formatTime(session.started_at, locale)}
       </p>
 
       <Button

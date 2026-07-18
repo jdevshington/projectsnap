@@ -14,7 +14,7 @@ export default async function ApartmentsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [apartments, { t }] = await Promise.all([
+  const [apartments, { t, locale }] = await Promise.all([
     getApartments(user.id),
     getT(),
   ]);
@@ -80,7 +80,7 @@ export default async function ApartmentsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-[#ADADAA]">
-                  {formatDate(apt.created_at)}
+                  {formatDate(apt.created_at, locale)}
                 </span>
                 <ChevronRight
                   size={14}
