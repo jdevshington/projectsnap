@@ -1,4 +1,4 @@
-// features/work-sessions/utils.ts
+// src/features/work-sessions/utils.ts
 
 export {
   formatTime,

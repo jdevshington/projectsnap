@@ -1,10 +1,14 @@
 // src/lib/format.ts
 
-export function formatTime(
-  isoString: string,
-  locale: string = "en-US"
-): string {
-  return new Date(isoString).toLocaleTimeString(locale, {
+import type { Locale } from "./i18n/translations";
+
+const INTL_LOCALE: Record<Locale, string> = {
+  en: "en-US",
+  es: "es-DO",
+};
+
+export function formatTime(isoString: string, locale: Locale = "en"): string {
+  return new Date(isoString).toLocaleTimeString(INTL_LOCALE[locale], {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -12,11 +16,8 @@ export function formatTime(
   });
 }
 
-export function formatDate(
-  isoString: string,
-  locale: string = "en-US"
-): string {
-  return new Date(isoString).toLocaleDateString(locale, {
+export function formatDate(isoString: string, locale: Locale = "en"): string {
+  return new Date(isoString).toLocaleDateString(INTL_LOCALE[locale], {
     month: "short",
     day: "numeric",
   });
@@ -24,9 +25,9 @@ export function formatDate(
 
 export function formatDateTime(
   isoString: string,
-  locale: string = "en-US"
+  locale: Locale = "en"
 ): string {
-  return new Date(isoString).toLocaleDateString(locale, {
+  return new Date(isoString).toLocaleDateString(INTL_LOCALE[locale], {
     weekday: "long",
     year: "numeric",
     month: "long",
