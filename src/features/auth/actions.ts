@@ -4,17 +4,28 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import {
+  signUpSchema,
+  signInSchema,
+  requestPasswordResetSchema,
+  updatePasswordSchema,
+} from "./schema";
 import type { ActionState } from "@/lib/action-state";
 
 export async function signUp(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const parsed = signUpSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid data." };
+  }
 
-  const { error } = await supabase.auth.signUp({ email, password });
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signUp(parsed.data);
 
   if (error) return { error: error.message };
 
@@ -25,11 +36,16 @@ export async function signIn(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const parsed = signInSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid data." };
+  }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) return { error: error.message };
 
@@ -47,16 +63,25 @@ export async function requestPasswordReset(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const supabase = await createClient();
-  const email = formData.get("email") as string;
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+  const parsed = requestPasswordResetSchema.safeParse({
+    email: formData.get("email"),
   });
+  if (!parsed.success) {
+    // Se mantiene el mismo comportamiento de siempre-success por
+    // seguridad (no revelar si el email es válido/existe), pero si
+    // ni siquiera tiene forma de email no vale la pena pegarle a Supabase.
+    return { success: true };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    parsed.data.email,
+    {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+    }
+  );
 
   if (error) {
-    // Se registra pero NO se expone al cliente a propósito: no
-    // queremos revelar si un email está registrado o no.
     console.error("resetPasswordForEmail error:", error.message);
   }
 
@@ -67,19 +92,18 @@ export async function updatePassword(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const parsed = updatePasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid data." };
+  }
+
   const supabase = await createClient();
-  const password = formData.get("password") as string;
-  const confirm = formData.get("confirm") as string;
-
-  if (password !== confirm) {
-    return { error: "Passwords do not match." };
-  }
-
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
-  }
-
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
 
   if (error) return { error: error.message };
 
