@@ -23,7 +23,7 @@ export default async function DashboardPage() {
 
   const [activeSession, completedSessions, profile, { t }] = await Promise.all([
     getActiveSession(user.id),
-    getCompletedSessions(user.id),
+    getCompletedSessions(user.id, 5),
     getProfile(user.id),
     getT(),
   ]);
