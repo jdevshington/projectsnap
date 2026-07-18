@@ -4,6 +4,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { apartmentSchema } from "./schema";
 import type { ActionState } from "@/lib/action-state";
 
 export async function createApartment(
@@ -17,22 +18,24 @@ export async function createApartment(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
-  const apartmentNumber = formData.get("apartment_number") as string;
-  const location = formData.get("location") as string;
-  const notes = formData.get("notes") as string;
+  const parsed = apartmentSchema.safeParse({
+    apartment_number: formData.get("apartment_number"),
+    location: formData.get("location"),
+    notes: formData.get("notes"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid data." };
+  }
+  const { apartment_number, location, notes } = parsed.data;
   const photos = formData.getAll("photos") as File[];
-
-  if (!apartmentNumber?.trim())
-    return { error: "Apartment number is required." };
-  if (!location?.trim()) return { error: "Location is required." };
 
   const { data: apartment, error } = await supabase
     .from("apartment_records")
     .insert({
       user_id: user.id,
-      apartment_number: apartmentNumber.trim(),
-      location: location.trim(),
-      notes: notes?.trim() || null,
+      apartment_number,
+      location,
+      notes: notes || null,
     })
     .select()
     .single();
@@ -83,21 +86,23 @@ export async function updateApartment(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
-  const apartmentNumber = formData.get("apartment_number") as string;
-  const location = formData.get("location") as string;
-  const notes = formData.get("notes") as string;
+  const parsed = apartmentSchema.safeParse({
+    apartment_number: formData.get("apartment_number"),
+    location: formData.get("location"),
+    notes: formData.get("notes"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid data." };
+  }
+  const { apartment_number, location, notes } = parsed.data;
   const photos = formData.getAll("photos") as File[];
-
-  if (!apartmentNumber?.trim())
-    return { error: "Apartment number is required." };
-  if (!location?.trim()) return { error: "Location is required." };
 
   const { error } = await supabase
     .from("apartment_records")
     .update({
-      apartment_number: apartmentNumber.trim(),
-      location: location.trim(),
-      notes: notes?.trim() || null,
+      apartment_number,
+      location,
+      notes: notes || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", apartmentId)
