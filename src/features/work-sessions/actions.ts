@@ -7,7 +7,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveSession } from "./queries";
 import type { ActionState } from "@/lib/action-state";
 
-export async function startSession(): Promise<ActionState> {
+// startSession/endSession no se usan con useActionState (no reciben
+// prevState) — se llaman directo desde un useTransition en el
+// cliente. Por eso su tipo de retorno excluye el caso `null` de
+// ActionState: siempre devuelven { error } o { success: true }.
+type SyncActionState = Exclude<ActionState, null>;
+
+export async function startSession(): Promise<SyncActionState> {
   const supabase = await createClient();
 
   const {
@@ -31,7 +37,7 @@ export async function startSession(): Promise<ActionState> {
   return { success: true };
 }
 
-export async function endSession(sessionId: string): Promise<ActionState> {
+export async function endSession(sessionId: string): Promise<SyncActionState> {
   const supabase = await createClient();
 
   const {
