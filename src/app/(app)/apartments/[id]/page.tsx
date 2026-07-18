@@ -1,6 +1,8 @@
+// src/app/(app)/apartments/[id]/page.tsx
+
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/server";
 import { getApartmentById } from "@/features/apartments/queries";
 import { formatDateTime } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
@@ -22,10 +24,7 @@ interface Props {
 
 export default async function ApartmentDetailPage({ params }: Props) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
   const [apartment, { t }] = await Promise.all([
@@ -57,7 +56,13 @@ export default async function ApartmentDetailPage({ params }: Props) {
       value: formatDateTime(apartment.updated_at ?? apartment.created_at),
     },
     ...(apartment.notes
-      ? [{ icon: FileText, label: t("apartments.notes"), value: apartment.notes }]
+      ? [
+          {
+            icon: FileText,
+            label: t("apartments.notes"),
+            value: apartment.notes,
+          },
+        ]
       : []),
   ];
 
@@ -106,7 +111,11 @@ export default async function ApartmentDetailPage({ params }: Props) {
       {apartment.photos.length > 0 && (
         <div className="mt-6">
           <div className="mb-3 flex items-center gap-2">
-            <ImageIcon size={14} strokeWidth={1.75} className="text-[#ADADAA]" />
+            <ImageIcon
+              size={14}
+              strokeWidth={1.75}
+              className="text-[#ADADAA]"
+            />
             <p className="text-xs font-medium uppercase tracking-widest text-[#6F6F6C]">
               Photos ({apartment.photos.length})
             </p>

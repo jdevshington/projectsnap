@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+// src/app/(app)/dashboard/page.tsx
+
+import { getUser } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import {
   getActiveSession,
@@ -16,10 +18,7 @@ import { redirect } from "next/navigation";
 export const metadata = { title: "Home" };
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
   const [activeSession, completedSessions, profile, { t }] = await Promise.all([

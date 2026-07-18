@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+// src/app/(app)/profile/page.tsx
+
+import { getUser } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
@@ -6,10 +8,7 @@ import { redirect } from "next/navigation";
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
   const { t } = await getT();
 

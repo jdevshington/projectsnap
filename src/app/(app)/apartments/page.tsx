@@ -1,5 +1,7 @@
+// src/app/(app)/apartments/page.tsx
+
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/server";
 import { getApartments } from "@/features/apartments/queries";
 import { Building2, ChevronRight, Plus } from "lucide-react";
 import { formatDate } from "@/lib/format";
@@ -9,10 +11,7 @@ import { redirect } from "next/navigation";
 export const metadata = { title: "Apartments" };
 
 export default async function ApartmentsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
   const [apartments, { t }] = await Promise.all([

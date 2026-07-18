@@ -1,6 +1,6 @@
-// app/(app)/history/page.tsx
+// src/app/(app)/history/page.tsx
 
-import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/server";
 import { getCompletedSessions } from "@/features/work-sessions/queries";
 import { SessionHistory } from "@/features/work-sessions/components/session-history";
 import { getT } from "@/lib/i18n/server";
@@ -9,10 +9,7 @@ import { redirect } from "next/navigation";
 export const metadata = { title: "History" };
 
 export default async function HistoryPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
   const [sessions, { t }] = await Promise.all([
