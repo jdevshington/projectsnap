@@ -4,7 +4,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { updateFullNameSchema } from "./schema";
+import { updateFullNameSchema, toggleUseNewUiSchema } from "./schema";
 import type { ActionState } from "@/lib/action-state";
 
 export async function updateFullName(
@@ -33,5 +33,30 @@ export async function updateFullName(
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function toggleUseNewUi(useNewUi: boolean): Promise<ActionState> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const parsed = toggleUseNewUiSchema.safeParse({ use_new_ui: useNewUi });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid data." };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ use_new_ui: parsed.data.use_new_ui })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/apartments");
+  revalidatePath("/profile");
   return { success: true };
 }

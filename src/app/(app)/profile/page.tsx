@@ -4,13 +4,15 @@ import { getUser } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
+import { getProfile } from "@/features/profile/queries";
+import { NewUiToggle } from "@/features/profile/components/new-ui-toggle";
 
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   const user = await getUser();
   if (!user) redirect("/login");
-  const { t } = await getT();
+  const [{ t }, profile] = await Promise.all([getT(), getProfile(user.id)]);
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8">
@@ -31,6 +33,10 @@ export default async function ProfilePage() {
             {user.id.slice(0, 8)}
           </p>
         </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-[#E2E2E0] bg-white">
+        <NewUiToggle initialValue={profile?.use_new_ui ?? false} />
       </div>
 
       <div className="mt-6">

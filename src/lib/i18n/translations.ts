@@ -48,6 +48,23 @@ export const translations = {
     "profile.saving": "Saving…",
     "profile.askLater": "Ask me later",
     "profile.nameCantBeEmpty": "Name can't be empty.",
+    "profile.newUiTitle": "New apartments UI",
+    "profile.newUiDescription":
+      "Try the redesigned apartments list with search and filters.",
+    "profile.newUiBeta": "Beta",
+    "profile.newUiReloadNotice":
+      "Reloading in {seconds}s to apply this change.",
+    "profile.newUiEnabled": "New UI enabled.",
+    "profile.newUiDisabled": "New UI disabled.",
+    // Apartments — search & filter (v2)
+    "apartments.searchPlaceholder": "Search by number or location...",
+    "apartments.filterDate": "Date",
+    "apartments.filterAll": "All time",
+    "apartments.filterToday": "Today",
+    "apartments.filterWeek": "This week",
+    "apartments.filterMonth": "This month",
+    "apartments.noResults": "No records match your search.",
+    "apartments.resultsCount": "records",
     // Common
     "common.back": "Back",
     "common.logout": "Log out",
@@ -100,6 +117,23 @@ export const translations = {
     "profile.saving": "Guardando…",
     "profile.askLater": "Después",
     "profile.nameCantBeEmpty": "El nombre no puede estar vacío.",
+    "profile.newUiTitle": "Nueva UI de apartamentos",
+    "profile.newUiDescription":
+      "Prueba la nueva lista de apartamentos con buscador y filtros.",
+    "profile.newUiBeta": "Beta",
+    "profile.newUiReloadNotice":
+      "Recargando en {seconds}s para aplicar este cambio.",
+    "profile.newUiEnabled": "Nueva UI activada.",
+    "profile.newUiDisabled": "Nueva UI desactivada.",
+    // Apartments — buscador y filtros (v2)
+    "apartments.searchPlaceholder": "Buscar por número o ubicación...",
+    "apartments.filterDate": "Fecha",
+    "apartments.filterAll": "Todo el tiempo",
+    "apartments.filterToday": "Hoy",
+    "apartments.filterWeek": "Esta semana",
+    "apartments.filterMonth": "Este mes",
+    "apartments.noResults": "Ningún registro coincide con tu búsqueda.",
+    "apartments.resultsCount": "registros",
     // Common
     "common.back": "Volver",
     "common.logout": "Cerrar sesión",

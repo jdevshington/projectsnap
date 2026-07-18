@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { getUser } from "@/lib/supabase/server";
 import { getApartments } from "@/features/apartments/queries";
+import { getProfile } from "@/features/profile/queries";
 import { Building2, ChevronRight, Plus } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
+import { ApartmentsListV2 } from "@/features/apartments/components/apartments-list-v2";
 
 export const metadata = { title: "Apartments" };
 
@@ -14,10 +16,19 @@ export default async function ApartmentsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [apartments, { t, locale }] = await Promise.all([
+  const [apartments, { t, locale }, profile] = await Promise.all([
     getApartments(user.id),
     getT(),
+    getProfile(user.id),
   ]);
+
+  // Reusa el mismo query y el mismo getUser() cacheado — el flag solo
+  // decide qué se renderiza, no agrega round-trips ni redirects.
+  // t/locale vienen del I18nProvider (context) dentro de ApartmentsListV2,
+  // no se pasan por props porque una función no serializa Server -> Client.
+  if (profile?.use_new_ui) {
+    return <ApartmentsListV2 apartments={apartments} />;
+  }
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8">
