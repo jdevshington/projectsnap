@@ -2,6 +2,7 @@
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getUser } from "@/lib/supabase/server";
 import { getApartmentById } from "@/features/apartments/queries";
 import { formatDateTime } from "@/lib/format";
@@ -122,18 +123,19 @@ export default async function ApartmentDetailPage({ params }: Props) {
           </div>
           <div className="grid grid-cols-3 gap-2">
             {apartment.photos.map((photo) => (
-              <a
+            <a  
                 key={photo.id}
                 href={photo.public_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="aspect-square overflow-hidden rounded-lg border border-[#E2E2E0] bg-[#F9F9F8]"
+                className="relative aspect-square overflow-hidden rounded-lg border border-[#E2E2E0] bg-[#F9F9F8]"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={photo.public_url}
                   alt={`Photo ${photo.id}`}
-                  className="h-full w-full object-cover transition hover:opacity-90"
+                  fill
+                  sizes="(max-width: 640px) 33vw, 200px"
+                  className="object-cover transition hover:opacity-90"
                 />
               </a>
             ))}

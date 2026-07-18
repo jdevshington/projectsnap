@@ -1,8 +1,9 @@
-// features/apartments/components/photo-manager.tsx
+// src/features/apartments/components/photo-manager.tsx
 
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { X, ImageIcon } from "lucide-react";
 import { deletePhoto } from "../actions";
 import { toast } from "sonner";
@@ -19,7 +20,6 @@ export function PhotoManager({ photos }: Props) {
   function handleDelete(photo: Photo) {
     startTransition(async () => {
       const result = await deletePhoto(photo.id, photo.storage_path);
-      // Solo cambia la condición del resultado:
       if ("error" in (result ?? {})) {
         toast.error((result as { error: string }).error);
       } else {
@@ -49,11 +49,12 @@ export function PhotoManager({ photos }: Props) {
             key={photo.id}
             className="group relative aspect-square overflow-hidden rounded-lg border border-[#E2E2E0] bg-[#F9F9F8]"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={photo.public_url}
               alt=""
-              className="h-full w-full object-cover"
+              fill
+              sizes="(max-width: 640px) 33vw, 200px"
+              className="object-cover"
             />
             <button
               type="button"
