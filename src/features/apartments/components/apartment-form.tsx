@@ -1,9 +1,8 @@
-// features/apartments/components/apartment-form.tsx
+// src/features/apartments/components/apartment-form.tsx
 
 "use client";
 
 import { useActionState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { createApartment, updateApartment } from "../actions";
 import { PhotoUpload } from "./photo-upload";
 import { toast } from "sonner";
@@ -18,31 +17,22 @@ type ApartmentFormProps = {
 };
 
 export function ApartmentForm({ apartment }: ApartmentFormProps) {
-  const router = useRouter();
   const formAction = apartment
     ? updateApartment.bind(null, apartment.id)
     : createApartment;
 
   const [state, action, pending] = useActionState(formAction, null);
 
+  // createApartment/updateApartment hacen redirect() en éxito, lo cual
+  // lanza NEXT_REDIRECT y navega antes de que la acción retorne un
+  // estado — así que aquí solo hace falta manejar el caso de error.
+  // El branch de "success" (con el setTimeout + router.push) nunca se
+  // ejecutaba en la práctica; se quita.
   useEffect(() => {
-    if (!state) return;
-
-    if ("error" in state) {
+    if (state && "error" in state) {
       toast.error(state.error);
     }
-
-    if ("success" in state) {
-      toast.success(state.success);
-      setTimeout(() => {
-        if (apartment) {
-          router.push(`/apartments/${apartment.id}`);
-        } else {
-          router.push("/apartments");
-        }
-      }, 800);
-    }
-  }, [state, apartment, router]);
+  }, [state]);
 
   return (
     <form action={action} className="space-y-4" noValidate>

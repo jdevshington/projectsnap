@@ -1,16 +1,15 @@
-// features/apartments/actions.ts
+// src/features/apartments/actions.ts
 
 "use server";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-
-type FormState = { error: string } | { success: string } | null;
+import type { ActionState } from "@/lib/action-state";
 
 export async function createApartment(
-  _prevState: FormState,
+  _prevState: ActionState<string>,
   formData: FormData
-): Promise<FormState> {
+): Promise<ActionState<string>> {
   const supabase = await createClient();
 
   const {
@@ -42,29 +41,31 @@ export async function createApartment(
 
   const validPhotos = photos.filter((f) => f.size > 0);
   if (validPhotos.length > 0) {
-    for (const file of validPhotos) {
-      const ext = file.name.split(".").pop();
-      const path = `${user.id}/${apartment.id}/${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}.${ext}`;
+    await Promise.allSettled(
+      validPhotos.map(async (file) => {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${apartment.id}/${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("apartment-photos")
-        .upload(path, file);
+        const { error: uploadError } = await supabase.storage
+          .from("apartment-photos")
+          .upload(path, file);
 
-      if (uploadError) continue;
+        if (uploadError) return;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("apartment-photos").getPublicUrl(path);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("apartment-photos").getPublicUrl(path);
 
-      await supabase.from("photos").insert({
-        user_id: user.id,
-        apartment_id: apartment.id,
-        storage_path: path,
-        public_url: publicUrl,
-      });
-    }
+        await supabase.from("photos").insert({
+          user_id: user.id,
+          apartment_id: apartment.id,
+          storage_path: path,
+          public_url: publicUrl,
+        });
+      })
+    );
   }
 
   redirect("/apartments");
@@ -72,9 +73,9 @@ export async function createApartment(
 
 export async function updateApartment(
   apartmentId: string,
-  _prevState: FormState,
+  _prevState: ActionState<string>,
   formData: FormData
-): Promise<FormState> {
+): Promise<ActionState<string>> {
   const supabase = await createClient();
 
   const {
@@ -106,29 +107,31 @@ export async function updateApartment(
 
   const validPhotos = photos.filter((f) => f.size > 0);
   if (validPhotos.length > 0) {
-    for (const file of validPhotos) {
-      const ext = file.name.split(".").pop();
-      const path = `${user.id}/${apartmentId}/${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}.${ext}`;
+    await Promise.allSettled(
+      validPhotos.map(async (file) => {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${apartmentId}/${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("apartment-photos")
-        .upload(path, file);
+        const { error: uploadError } = await supabase.storage
+          .from("apartment-photos")
+          .upload(path, file);
 
-      if (uploadError) continue;
+        if (uploadError) return;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("apartment-photos").getPublicUrl(path);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("apartment-photos").getPublicUrl(path);
 
-      await supabase.from("photos").insert({
-        user_id: user.id,
-        apartment_id: apartmentId,
-        storage_path: path,
-        public_url: publicUrl,
-      });
-    }
+        await supabase.from("photos").insert({
+          user_id: user.id,
+          apartment_id: apartmentId,
+          storage_path: path,
+          public_url: publicUrl,
+        });
+      })
+    );
   }
 
   redirect(`/apartments/${apartmentId}`);
@@ -137,7 +140,7 @@ export async function updateApartment(
 export async function deletePhoto(
   photoId: string,
   storagePath: string
-): Promise<FormState> {
+): Promise<ActionState<string>> {
   const supabase = await createClient();
 
   const {
@@ -145,7 +148,22 @@ export async function deletePhoto(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
-  await supabase.storage.from("apartment-photos").remove([storagePath]);
+  const { data: photo, error: fetchError } = await supabase
+    .from("photos")
+    .select("id, storage_path")
+    .eq("id", photoId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (fetchError) return { error: fetchError.message };
+  if (!photo || photo.storage_path !== storagePath) {
+    return { error: "Photo not found." };
+  }
+
+  const { error: storageError } = await supabase.storage
+    .from("apartment-photos")
+    .remove([photo.storage_path]);
+  if (storageError) return { error: storageError.message };
 
   const { error } = await supabase
     .from("photos")

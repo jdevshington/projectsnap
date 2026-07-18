@@ -1,14 +1,13 @@
-// features/work-sessions/actions.ts
+// src/features/work-sessions/actions.ts
 
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveSession } from "./queries";
+import type { ActionState } from "@/lib/action-state";
 
-type ActionResult = { error: string } | { success: true };
-
-export async function startSession(): Promise<ActionResult> {
+export async function startSession(): Promise<ActionState> {
   const supabase = await createClient();
 
   const {
@@ -32,7 +31,7 @@ export async function startSession(): Promise<ActionResult> {
   return { success: true };
 }
 
-export async function endSession(sessionId: string): Promise<ActionResult> {
+export async function endSession(sessionId: string): Promise<ActionState> {
   const supabase = await createClient();
 
   const {

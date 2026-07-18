@@ -1,10 +1,10 @@
-// features/profile/actions.ts
+// src/features/profile/actions.ts
+
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-
-type ActionState = { error: string } | { success: true } | null;
+import type { ActionState } from "@/lib/action-state";
 
 export async function updateFullName(
   _prevState: ActionState,

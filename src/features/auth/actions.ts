@@ -1,23 +1,15 @@
-// features/auth/actions.ts
+// src/features/auth/actions.ts
 
 "use server";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { ActionState } from "@/lib/action-state";
 
-// ── Shared types ──────────────────────────────────────────────
-type BasicState = { error: string } | null
-
-type AuthActionState = {
-  error: string | null
-  success: boolean
-} | null
-
-// ── Existing actions ──────────────────────────────────────────
 export async function signUp(
-  _prevState: BasicState,
+  _prevState: ActionState,
   formData: FormData
-): Promise<BasicState> {
+): Promise<ActionState> {
   const supabase = await createClient();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -30,9 +22,9 @@ export async function signUp(
 }
 
 export async function signIn(
-  _prevState: BasicState,
+  _prevState: ActionState,
   formData: FormData
-): Promise<BasicState> {
+): Promise<ActionState> {
   const supabase = await createClient();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -52,9 +44,9 @@ export async function signOut() {
 
 // ── Password reset ────────────────────────────────────────────
 export async function requestPasswordReset(
-  _prevState: AuthActionState,
+  _prevState: ActionState,
   formData: FormData
-): Promise<AuthActionState> {
+): Promise<ActionState> {
   const supabase = await createClient();
   const email = formData.get("email") as string;
 
@@ -63,31 +55,33 @@ export async function requestPasswordReset(
   });
 
   if (error) {
+    // Se registra pero NO se expone al cliente a propósito: no
+    // queremos revelar si un email está registrado o no.
     console.error("resetPasswordForEmail error:", error.message);
   }
 
-  return { error: null, success: true };
+  return { success: true };
 }
 
 export async function updatePassword(
-  _prevState: AuthActionState,
+  _prevState: ActionState,
   formData: FormData
-): Promise<AuthActionState> {
+): Promise<ActionState> {
   const supabase = await createClient();
   const password = formData.get("password") as string;
   const confirm = formData.get("confirm") as string;
 
   if (password !== confirm) {
-    return { error: "Passwords do not match.", success: false };
+    return { error: "Passwords do not match." };
   }
 
   if (password.length < 8) {
-    return { error: "Password must be at least 8 characters.", success: false };
+    return { error: "Password must be at least 8 characters." };
   }
 
   const { error } = await supabase.auth.updateUser({ password });
 
-  if (error) return { error: error.message, success: false };
+  if (error) return { error: error.message };
 
   redirect("/dashboard");
 }
