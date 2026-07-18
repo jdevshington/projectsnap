@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createApartment, updateApartment } from "../actions";
 import { PhotoUpload } from "./photo-upload";
 import { toast } from "sonner";
@@ -21,21 +21,32 @@ export function ApartmentForm({ apartment }: ApartmentFormProps) {
     ? updateApartment.bind(null, apartment.id)
     : createApartment;
 
-  const [state, action, pending] = useActionState(formAction, null);
+  const [state, dispatch, pending] = useActionState(formAction, null);
+  const [files, setFiles] = useState<File[]>([]);
 
-  // createApartment/updateApartment hacen redirect() en éxito, lo cual
-  // lanza NEXT_REDIRECT y navega antes de que la acción retorne un
-  // estado — así que aquí solo hace falta manejar el caso de error.
-  // El branch de "success" (con el setTimeout + router.push) nunca se
-  // ejecutaba en la práctica; se quita.
   useEffect(() => {
     if (state && "error" in state) {
       toast.error(state.error);
     }
   }, [state]);
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    // Los campos de texto se leen del DOM (tienen `name`, el form
+    // sigue siendo nativo); las fotos vienen del estado `files` de
+    // React, no de un <input type="file">. Se arma el FormData a
+    // mano y se despacha directo — dispatch() acepta un FormData sin
+    // necesidad de que venga de un submit nativo, y sigue actualizando
+    // `pending` igual.
+    const formData = new FormData(e.currentTarget);
+    files.forEach((file) => formData.append("photos", file));
+
+    dispatch(formData);
+  }
+
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <fieldset disabled={pending} className="space-y-4 disabled:opacity-60">
         <div>
           <label
@@ -90,7 +101,7 @@ export function ApartmentForm({ apartment }: ApartmentFormProps) {
           />
         </div>
 
-        <PhotoUpload />
+        <PhotoUpload files={files} onChange={setFiles} />
       </fieldset>
 
       <button

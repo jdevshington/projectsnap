@@ -1,13 +1,13 @@
-// features/apartments/components/photo-upload.tsx
+// src/features/apartments/components/photo-upload.tsx
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, X } from "lucide-react";
 
-interface Preview {
-  file: File;
-  url: string;
+interface PhotoUploadProps {
+  files: File[];
+  onChange: (files: File[]) => void;
 }
 
 async function compressImage(file: File): Promise<File> {
@@ -52,31 +52,45 @@ async function compressImage(file: File): Promise<File> {
   });
 }
 
-export function PhotoUpload() {
+/**
+ * Componente controlado: el padre es dueño del array de archivos
+ * (`files`) y decide qué hacer con ellos en el submit. Este
+ * componente solo se encarga de seleccionar, comprimir y previsualizar.
+ *
+ * Reemplaza la técnica anterior de un <input type="file"> oculto por
+ * preview con archivos asignados vía DataTransfer — no era confiable
+ * entre navegadores. Ahora no hay ningún input con `name`: los
+ * archivos se agregan al FormData a mano en ApartmentForm.
+ */
+export function PhotoUpload({ files, onChange }: PhotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [previews, setPreviews] = useState<Preview[]>([]);
   const [compressing, setCompressing] = useState(false);
 
+  // Se recrean solo cuando cambia el array de archivos, y se revocan
+  // en cleanup para no filtrar memoria entre renders.
+  const previewUrls = useMemo(
+    () => files.map((file) => URL.createObjectURL(file)),
+    [files]
+  );
+
+  useEffect(() => {
+    return () => previewUrls.forEach((url) => URL.revokeObjectURL(url));
+  }, [previewUrls]);
+
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
+    const selected = Array.from(e.target.files ?? []);
+    if (!selected.length) return;
 
     setCompressing(true);
-    const compressed = await Promise.all(files.map(compressImage));
+    const compressed = await Promise.all(selected.map(compressImage));
     setCompressing(false);
 
-    const newPreviews = compressed.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }));
-
-    setPreviews((prev) => [...prev, ...newPreviews]);
+    onChange([...files, ...compressed]);
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  function removePreview(index: number) {
-    URL.revokeObjectURL(previews[index].url);
-    setPreviews((prev) => prev.filter((_, i) => i !== index));
+  function removeFile(index: number) {
+    onChange(files.filter((_, i) => i !== index));
   }
 
   return (
@@ -86,41 +100,22 @@ export function PhotoUpload() {
         <span className="ml-1 font-normal text-[#6F6F6C]">(optional)</span>
       </label>
 
-      {/* Hidden file inputs — one per preview to attach to FormData */}
-      {previews.map((preview, index) => (
-        <input
-          key={index}
-          type="file"
-          name="photos"
-          className="hidden"
-          readOnly
-          ref={(el) => {
-            if (el) {
-              const dt = new DataTransfer();
-              dt.items.add(preview.file);
-              el.files = dt.files;
-            }
-          }}
-        />
-      ))}
-
-      {/* Previews */}
-      {previews.length > 0 && (
+      {files.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
-          {previews.map((preview, index) => (
+          {files.map((file, index) => (
             <div
-              key={index}
+              key={`${file.name}-${file.lastModified}-${index}`}
               className="relative h-20 w-20 overflow-hidden rounded-lg border border-[#E2E2E0]"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={preview.url}
+                src={previewUrls[index]}
                 alt={`Photo ${index + 1}`}
                 className="h-full w-full object-cover"
               />
               <button
                 type="button"
-                onClick={() => removePreview(index)}
+                onClick={() => removeFile(index)}
                 className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                 aria-label={`Remove photo ${index + 1}`}
               >
@@ -131,7 +126,6 @@ export function PhotoUpload() {
         </div>
       )}
 
-      {/* Add button */}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -141,7 +135,7 @@ export function PhotoUpload() {
         <Camera size={15} strokeWidth={1.75} />
         {compressing
           ? "Processing..."
-          : previews.length === 0
+          : files.length === 0
           ? "Add photos"
           : "Add more"}
       </button>
@@ -149,7 +143,6 @@ export function PhotoUpload() {
       <input
         ref={inputRef}
         type="file"
-        name="photos"
         accept="image/*"
         multiple
         className="hidden"
