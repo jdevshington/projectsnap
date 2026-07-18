@@ -4,6 +4,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { updateFullNameSchema } from "./schema";
 import type { ActionState } from "@/lib/action-state";
 
 export async function updateFullName(
@@ -17,12 +18,16 @@ export async function updateFullName(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
-  const fullName = (formData.get("full_name") as string)?.trim();
-  if (!fullName) return { error: "Name can't be empty." };
+  const parsed = updateFullNameSchema.safeParse({
+    full_name: formData.get("full_name"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid data." };
+  }
 
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name: fullName })
+    .update({ full_name: parsed.data.full_name })
     .eq("id", user.id);
 
   if (error) return { error: error.message };
