@@ -1,7 +1,11 @@
 // app/page.tsx
 
-import { redirect } from "next/navigation";
+// src/app/page.tsx
 
-export default function Home() {
-  redirect("/dashboard");
+import { redirect } from "next/navigation";
+import { getUser } from "@/lib/supabase/server";
+
+export default async function Home() {
+  const user = await getUser();
+  redirect(user ? "/dashboard" : "/login");
 }
