@@ -9,12 +9,14 @@ import { formatDate } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
 import { ApartmentsListV2 } from "@/features/apartments/components/apartments-list-v2";
+import { requirePaidAccess } from "@/features/billing/gating";
 
 export const metadata = { title: "Apartments" };
 
 export default async function ApartmentsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
+  await requirePaidAccess();
 
   const [apartments, { t, locale }, profile] = await Promise.all([
     getApartments(user.id),

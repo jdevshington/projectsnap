@@ -9,6 +9,7 @@ import { ApartmentForm } from "@/features/apartments/components/apartment-form";
 import { PhotoManager } from "@/features/apartments/components/photo-manager";
 import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
+import { requirePaidAccess } from "@/features/billing/gating";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -18,6 +19,7 @@ export default async function EditApartmentPage({ params }: Props) {
   const { id } = await params;
   const user = await getUser();
   if (!user) redirect("/login");
+  await requirePaidAccess();
 
   const [apartment, { t }] = await Promise.all([
     getApartmentById(id, user.id),

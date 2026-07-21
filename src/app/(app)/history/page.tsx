@@ -5,12 +5,14 @@ import { getCompletedSessions } from "@/features/work-sessions/queries";
 import { SessionHistory } from "@/features/work-sessions/components/session-history";
 import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
+import { requirePaidAccess } from "@/features/billing/gating";
 
 export const metadata = { title: "History" };
 
 export default async function HistoryPage() {
   const user = await getUser();
   if (!user) redirect("/login");
+  await requirePaidAccess();
 
   const [sessions, { t }] = await Promise.all([
     getCompletedSessions(user.id, 50),

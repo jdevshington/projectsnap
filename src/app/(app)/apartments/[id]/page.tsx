@@ -16,6 +16,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { redirect } from "next/navigation";
+import { requirePaidAccess } from "@/features/billing/gating";
 
 export const metadata = { title: "Apartment Record" };
 
@@ -27,6 +28,7 @@ export default async function ApartmentDetailPage({ params }: Props) {
   const { id } = await params;
   const user = await getUser();
   if (!user) redirect("/login");
+  await requirePaidAccess();
 
   const [apartment, { t, locale }] = await Promise.all([
     getApartmentById(id, user.id),

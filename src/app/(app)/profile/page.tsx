@@ -6,13 +6,22 @@ import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/features/profile/queries";
 import { NewUiToggle } from "@/features/profile/components/new-ui-toggle";
+import { getBillingOverview } from "@/features/billing/actions";
+import { BillingStatusCard } from "@/features/billing/components/billing-status-card";
 
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   const user = await getUser();
   if (!user) redirect("/login");
-  const [{ t }, profile] = await Promise.all([getT(), getProfile(user.id)]);
+  const [{ t }, profile, billingResult] = await Promise.all([
+    getT(),
+    getProfile(user.id),
+    getBillingOverview(),
+  ]);
+
+  const billing =
+    billingResult && "success" in billingResult ? billingResult.success : null;
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8">
@@ -38,6 +47,14 @@ export default async function ProfilePage() {
       <div className="mt-4 rounded-xl border border-[#E2E2E0] bg-white">
         <NewUiToggle initialValue={profile?.use_new_ui ?? false} />
       </div>
+
+      {billing && (
+        <BillingStatusCard
+          subscription={billing.subscription}
+          isExempt={billing.isExempt}
+          hasAccess={billing.hasAccess}
+        />
+      )}
 
       <div className="mt-6">
         <LogoutButton />

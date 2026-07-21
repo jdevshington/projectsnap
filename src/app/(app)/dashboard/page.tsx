@@ -14,12 +14,14 @@ import { NamePromptModal } from "@/features/profile/components/name-prompt-modal
 import { LocaleToggle } from "@/components/locale-toggle";
 import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
+import { requirePaidAccess } from "@/features/billing/gating";
 
 export const metadata = { title: "Home" };
 
 export default async function DashboardPage() {
   const user = await getUser();
   if (!user) redirect("/login");
+  await requirePaidAccess();
 
   const [activeSession, completedSessions, profile, { t }] = await Promise.all([
     getActiveSession(user.id),

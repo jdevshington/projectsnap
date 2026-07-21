@@ -1,11 +1,18 @@
 // app/(app)/apartments/new/page.tsx
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { ApartmentForm } from "@/features/apartments/components/apartment-form";
 import { getT } from "@/lib/i18n/server";
+import { getUser } from "@/lib/supabase/server";
+import { requirePaidAccess } from "@/features/billing/gating";
 
 export default async function NewApartmentPage() {
+  const user = await getUser();
+  if (!user) redirect("/login");
+  await requirePaidAccess();
+
   const { t } = await getT();
 
   return (
