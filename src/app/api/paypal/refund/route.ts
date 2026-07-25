@@ -67,7 +67,17 @@ export async function POST() {
   const endTime = now.toISOString();
 
   const sales = await paypalFetch<{
-    transactions?: Array<{ id: string; status: string; amount: { total: string; currency: string } }>;
+    // PayPal's /v1/billing/subscriptions/{id}/transactions response includes
+    // a top-level `time` field on each transaction representing the actual
+    // transaction time (ISO 8601 string). We sort on that, not on `id`, so
+    // the most recent payment is picked even when transaction ids happen
+    // not to sort lexicographically by time.
+    transactions?: Array<{
+      id: string;
+      status: string;
+      time: string;
+      amount: { total: string; currency: string };
+    }>;
   }>(
     `/v1/billing/subscriptions/${sub.paypal_subscription_id}/transactions?start_time=${encodeURIComponent(
       startTime
@@ -76,7 +86,7 @@ export async function POST() {
 
   const lastPaid = sales.transactions
     ?.filter((t) => t.status === "COMPLETED")
-    .sort((a, b) => (a.id < b.id ? 1 : -1))[0];
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
 
   if (!lastPaid) {
     return NextResponse.json(
@@ -92,6 +102,23 @@ export async function POST() {
       reason: "BUYER_REQUEST",
     }),
   });
+
+  // Best-effort cancel on PayPal side. We already refunded the capture, so
+  // we don't want the subscription silently rebilling the user next cycle.
+  // If this fails we still mark the local row 'expired' — access is revoked
+  // locally regardless, and the failed cancel is logged for support follow-up.
+  try {
+    await paypalFetch(`/v1/billing/subscriptions/${sub.paypal_subscription_id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Refunded via /refund route" }),
+    });
+  } catch (cancelErr) {
+    console.error(
+      "[refund] PayPal subscription cancel failed after refund",
+      cancelErr,
+      { paypal_subscription_id: sub.paypal_subscription_id }
+    );
+  }
 
   const { error: updateErr } = await admin
     .from("subscriptions")
