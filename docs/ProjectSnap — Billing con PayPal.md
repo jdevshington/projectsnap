@@ -1,52 +1,63 @@
-# ProjectSnap — Billing con PayPal: handoff v3 (Jul 21, 2026)
+# ProjectSnap — Billing con PayPal: handoff v4 (Jul 25, 2026)
 
 **Pégale este archivo completo a cualquier chat nuevo al inicio de la sesión.**
-Reemplaza a `projectsnap-billing-handoff-v2-2026-07-21.md`.
+Reemplaza a `projectsnap-billing-handoff-v3-2026-07-21.md`.
 
-## 🎉 ESTADO: validación end-to-end en sandbox CONFIRMADA
+## 🎉 ESTADO: validación end-to-end confirmada en dos entornos — localhost+ngrok Y Vercel Preview (qa.projectsnap.online)
 
-Esto ya no es teórico — se probó el flujo real completo y funcionó:
+Todo lo de v3 sigue en pie (checkout completo, verificación de firma, upsert, gating). Esta versión agrega la migración a Vercel Preview y un bug de infraestructura nuevo que casi nadie ve venir.
 
-1. Usuario real (`3d9c0318-dc03-4a68-8eda-a4104914e6db`) entró a `/billing`, click en botón PayPal.
-2. `POST /api/paypal/create-subscription` → 200, PayPal creó la suscripción (`I-0A9VT1CHYRV6`).
-3. Login con cuenta **Personal** (buyer) de sandbox, aprobó ($0 porque hay 7 días de trial).
-4. PayPal mandó el webhook real — **dos** `POST /api/paypal/webhook` → 200 c/u (eventos `CREATED` y `ACTIVATED`).
-5. `verify-webhook.ts` (la versión con postback API, JSON.parse del body) verificó la firma correctamente — sin esto, los webhooks hubieran sido rechazados con 400.
-6. Fila final en `subscriptions`:
-   ```
-   status: active, plan: monthly, paypal_subscription_id: I-0A9VT1CHYRV6,
-   current_period_start: 2026-07-21 11:37:10+00,
-   current_period_end: 2026-07-28 10:00:00+00
-   ```
-7. `/profile` renderiza la tarjeta de billing correctamente: Plan "Mensual — $15 USD", Estado "Activo", "Renueva el 28 jul de 2026", botones "Cancelar suscripción" y "Solicitar reembolso" visibles.
-8. El gate de acceso (`requirePaidAccess()`) funciona: con la suscripción activa, `/apartments`, `/dashboard`, `/history` cargan normal.
+## 🔴 Bug nuevo y su fix: Vercel Deployment Protection bloqueaba el webhook (401)
 
-**Esto confirma que:** la verificación de firma del webhook es correcta, el flujo completo de creación de suscripción funciona, el upsert con `onConflict: user_id` no rompió nada, y el gating por página funciona en la práctica, no solo en el código.
+**Síntoma:** la suscripción se creaba bien en PayPal, el usuario aprobaba, pero la fila en `subscriptions` se quedaba en `status: 'incomplete'` para siempre — igual que el viejo problema de ngrok en v3, pero esta vez **no había ngrok de por medio**: el webhook apuntaba directo a `https://qa.projectsnap.online/api/paypal/webhook` (Vercel Preview).
 
-## Problema resuelto en el camino: localhost vs ngrok
+**Causa real:** Vercel protege por defecto todos los deployments de Preview con **Deployment Protection / Vercel Authentication (SSO)**. Esa protección intercepta CUALQUIER request entrante — incluyendo las de PayPal — antes de que llegue a `route.ts`, y responde `401 Unauthorized` con un `Set-Cookie: _vercel_sso_nonce=...`. El webhook de PayPal nunca llega a ejecutar nuestro código: ni siquiera se intenta la verificación de firma.
 
-El primer intento falló silenciosamente — el webhook nunca llegó porque no había un túnel público (ngrok) corriendo, o la URL de ngrok había cambiado y ya no coincidía con la registrada en el dashboard de PayPal. La fila quedó atascada en `status: 'incomplete'`, `current_period_start/end: null` — exactamente el placeholder de `create-subscription`, nunca tocado por el webhook. Se resolvió corriendo ngrok activamente y actualizando la URL del webhook registrado en PayPal antes de reintentar. **Para el próximo test:** confirma que ngrok esté corriendo (o mejor, mover a Vercel Preview, ver sección de pendientes) antes de iniciar el checkout, no después.
+**Cómo se diagnosticó:** en el dashboard de PayPal (Developer Dashboard → Webhooks → historial del evento), el log de transmisión mostraba:
 
-## Bug de display confirmado (no de seguridad) — visto en producción de prueba
+```
+http_status: 401, reason_phrase: "Unauthorized"
+response_headers: { Set-Cookie: "_vercel_sso_nonce=...", Server: "Vercel", ... }
+```
 
-`status` muestra `"active"` en vez de `"trialing"` durante el período de prueba de 7 días (el caso ya documentado en `lib/paypal/types.ts`: PayPal reporta `resource.status = "ACTIVE"` durante el trial en vez de un estado distintivo, y el código solo hace el override a `"trialing"` cuando el estado ya mapeado es `"trialing"`/`"incomplete"`, no cuando ya llegó como `"active"`). **No afecta el acceso** — `has_paid_access()` da `true` en ambos casos. Solo es cosmético: el usuario ve "Activo" cuando en realidad está en su semana gratis. Pendiente de arreglo, baja prioridad.
+Ese `Set-Cookie` con `_vercel_sso_nonce` es la huella digital de que es Vercel Auth bloqueando, no nuestro código. (Si hubiera sido nuestra firma fallando, el código devuelve `400` con `{"error": "Invalid signature."}` — nunca `401`.)
 
-## Todo lo demás sigue igual que en v2 — no repetir
+**Fix aplicado:** se desactivó **"Require Vercel Authentication"** (require Vercel login) en Deployment Protection para el proyecto. Con eso desactivado, "Protection Bypass for Automation" queda no-aplicable/grisado en el dashboard de Vercel — es esperado, no un error: esa opción solo tiene sentido cuando hay una protección activa que saltarse.
+
+**⚠️ Trade-off a tener en cuenta:** con la protección desactivada, `qa.projectsnap.online` (todo el entorno Preview) queda públicamente accesible sin login de Vercel — no solo para PayPal. Aceptable para seguir probando; **antes de escalar el uso de este entorno o si se vuelve sensible, evaluar reactivar la protección y usar en su lugar "Protection Bypass for Automation"**, registrando la URL del webhook en PayPal con el query param `?x-vercel-protection-bypass=<secret>` (método recomendado por Vercel para webhooks de terceros que no pueden mandar headers custom).
+
+**Para el próximo test / próxima sesión:** si se vuelve a migrar de entorno (otro dominio de preview, un proyecto nuevo de Vercel, etc.), revisar Deployment Protection ANTES de registrar el webhook en PayPal — no después. Este es ahora el tercer "falso silencio" del webhook que hemos visto (ngrok caído → ngrok con URL vieja → Vercel Deployment Protection); todos comparten el mismo síntoma (`status: incomplete` para siempre) pero causas de infraestructura distintas. Si vuelve a pasar, lo primero es SIEMPRE revisar el historial de transmisión del evento en el dashboard de PayPal antes de tocar código — el `http_status` y los headers de la respuesta dicen inmediatamente si es ngrok caído (sin respuesta / connection refused), nuestra firma (400), o un proxy/protección externa (401 con cookies ajenas a nuestra app).
+
+## Todo lo demás sigue igual que en v3 — no repetir
 
 - Las 10 decisiones de negocio (recurrente, $15/mes, trial 7 días, reembolso 14 días, usuarios exentos, etc.)
 - La arquitectura (webhook como única fuente de verdad, `has_paid_access()` como gate único, service role solo en `admin.ts`, gating por página no en layout)
 - Los bugs corregidos en rondas anteriores (current_period_end fallback, onConflict en user_id, plan faltante, timeout de paypal-button.tsx, get_user_id_by_email vs listUsers roto)
-- Lista completa de archivos nuevos/modificados (18 nuevos + 9 modificados, ver handoff v2 o pregunta por la lista si se perdió)
+- El bug de display `"active"` vs `"trialing"` durante el trial — sigue pendiente, cosmético, baja prioridad
+- Lista completa de archivos nuevos/modificados (ver handoff v2 o pregunta por la lista si se perdió)
+
+## Hallazgos de la auditoría completa del repo (rama `qa/payments`, Jul 25 2026) — pendientes reales
+
+Se corrió una auditoría tipo Staff Engineer sobre todo el repo. Resultado general: arquitectura sólida, sin necesidad de restructurar nada. Pendientes concretos que quedaron abiertos (ninguno relacionado con el bug de Vercel de arriba):
+
+1. **[Alto] El flujo de reembolso no cancela la suscripción en PayPal** — `refund/route.ts` reembolsa el pago y marca `status: 'expired'` en la DB, pero la suscripción sigue viva en PayPal y puede intentar cobrar el próximo ciclo. Falta agregar la llamada al endpoint de cancelación de PayPal dentro de ese mismo route handler tras el refund exitoso.
+2. **[Alto] `get_user_id_by_email` (función RPC que usa el webhook como fallback) no está en ninguna migración versionada** — se creó a mano en el SQL Editor de Supabase en algún momento y nunca se capturó. Bloqueante antes de crear un proyecto de Supabase nuevo para producción real.
+3. **[Medio] `refund/route.ts` ordena transacciones por string ID (`a.id < b.id`) en vez de por fecha** para encontrar "el último pago" — puede reembolsar la transacción equivocada si hay más de un pago en la ventana de 35 días.
+4. **[Medio] `has_paid_access(uid)` (función SQL) no restringe `uid = auth.uid()`** — cualquier usuario autenticado puede consultar si otra cuenta tiene acceso pagado conociendo su UUID. Fuga de info binaria, no de datos de pago. Fix de una línea.
+5. **[Bajo]** Archivo duplicado `webhook-route.ts` (código muerto, copia exacta de `route.ts`) y componente `CheckoutError` sin usar en ningún lado — limpiar antes de producción.
+6. **[Bajo]** El reembolso no hace `router.refresh()` tras éxito — el toast dice "reembolso exitoso" pero la tarjeta de billing muestra el estado viejo hasta recargar.
+
+Reporte completo con severidad/esfuerzo/roadmap: `projectsnap-audit-qa-payments.md`.
 
 ## Pendientes reales antes de producción
 
 1. **Fix opcional del bug de display** (`"active"` vs `"trialing"` durante trial) — cosmético, no bloqueante.
 2. **Probar el flujo de cancelación** — click en "Cancelar suscripción" en `/profile`, confirmar que PayPal la marca para cancelar al final del período, y que el webhook `CANCELLED` eventualmente llega y actualiza `status`.
-3. **Probar el flujo de reembolso** — dentro y fuera de la ventana de 14 días, confirmar el código `OUTSIDE_REFUND_WINDOW` y la pérdida de acceso inmediata dentro de ventana.
-4. **Mover de localhost+ngrok a Vercel Preview** — más estable para seguir probando sin que la URL del webhook se rompa cada vez que reinicias ngrok. Env vars de sandbox solo en "Preview", nunca en "Production".
-5. **Antes de ir a producción real:** rotar `SUPABASE_SERVICE_ROLE_KEY`, cambiar `PAYPAL_ENV=live` con credenciales reales, crear el producto/plan real (no sandbox) con el mismo script `create-paypal-plan.mjs`, registrar el webhook de producción.
+3. **Probar el flujo de reembolso** — dentro y fuera de la ventana de 14 días, confirmar el código `OUTSIDE_REFUND_WINDOW` y la pérdida de acceso inmediata dentro de ventana. **Antes de probarlo en serio, resolver el hallazgo #1 de la auditoría** (cancelar la suscripción en PayPal como parte del refund), o el reembolso de prueba va a dejar una suscripción zombie cobrando en sandbox.
+4. **Resolver los hallazgos Alto/Medio de la auditoría** (#1–#4 arriba) antes de ir a producción real.
+5. **Antes de ir a producción real:** rotar `SUPABASE_SERVICE_ROLE_KEY`, cambiar `PAYPAL_ENV=live` con credenciales reales, crear el producto/plan real (no sandbox) con el mismo script `create-paypal-plan.mjs`, registrar el webhook de producción, y decidir la postura final de Deployment Protection en Vercel para el dominio de producción (probablemente sí se quiere protección + Protection Bypass ahí, a diferencia del entorno QA).
 6. Limpiar filas de prueba en `subscriptions`/`billing_incidents` antes de producción si se desea, aunque no es obligatorio (son solo datos de tu propio usuario de test).
 
 ## Nota de proceso (para el próximo Claude)
 
-Esta sesión demostró el valor de exigir siempre "muéstrame el código real, no un resumen" y de correr `tsc`/`eslint`/`build` de verdad en vez de solo revisar visualmente — se encontraron múltiples bugs reales (incluyendo uno crítico: `listUsers()` no filtra por email en esta versión del SDK) que una revisión superficial no hubiera detectado. Mantener ese estándar en las pruebas de cancelación/reembolso que faltan.
+Esta sesión demostró el valor de exigir siempre "muéstrame el código real, no un resumen" y de correr `tsc`/`eslint`/`build` de verdad en vez de solo revisar visualmente. También demostró que cuando un webhook "no llega", el primer lugar a mirar es el historial de transmisión en el dashboard de PayPal (http_status + headers de la respuesta), no el código — ya van tres causas de infraestructura distintas (ngrok caído, ngrok con URL vieja, Vercel Deployment Protection) para el mismo síntoma exacto (`status: incomplete` para siempre). Mantener ese estándar en las pruebas de cancelación/reembolso que faltan, y priorizar los hallazgos Alto de la auditoría antes de tocar producción.
