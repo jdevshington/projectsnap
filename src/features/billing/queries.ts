@@ -8,6 +8,7 @@
 // the DB once per request.
 
 import { cache } from "react";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient, getUser } from "@/lib/supabase/server";
 
 export type SubscriptionRow = {
@@ -76,3 +77,20 @@ export const hasPaidAccess = cache(async (): Promise<boolean> => {
   if (error) throw new Error(error.message);
   return Boolean(data);
 });
+
+/** Read profiles.trial_used_at for the given userId. Returns null if the
+ *  user has never started a trial, or if the row is missing. Uses the
+ *  admin client because the webhook calls this without a user session
+ *  (PayPal is the caller, not a logged-in user). */
+export async function getTrialUsed(userId: string): Promise<Date | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("trial_used_at")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data?.trial_used_at) return null;
+  return new Date(data.trial_used_at);
+}

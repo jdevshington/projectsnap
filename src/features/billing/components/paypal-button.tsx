@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/context";
+import { toast } from "sonner";
 
 declare global {
   interface Window {
@@ -26,7 +27,10 @@ declare global {
           shape?: "rect" | "pill";
           label?: "paypal" | "checkout" | "subscribe" | "buynow";
         };
-        createSubscription: (data: Record<string, unknown>, actions: unknown) => Promise<string>;
+        createSubscription: (
+          data: Record<string, unknown>,
+          actions: unknown
+        ) => Promise<string>;
         onApprove: (data: Record<string, unknown>, actions: unknown) => void;
         onCancel: (data: Record<string, unknown>) => void;
         onError: (err: Record<string, unknown> | string) => void;
@@ -87,7 +91,9 @@ export function PayPalButton({ initialError = null }: PayPalButtonProps) {
     }
 
     const script = document.createElement("script");
-    script.src = `${SDK_URL}?client-id=${encodeURIComponent(clientId)}&vault=true&intent=subscription`;
+    script.src = `${SDK_URL}?client-id=${encodeURIComponent(
+      clientId
+    )}&vault=true&intent=subscription`;
     script.async = true;
     script.dataset.paypalSdk = "true";
 
@@ -128,7 +134,12 @@ export function PayPalButton({ initialError = null }: PayPalButtonProps) {
     }
 
     const buttons = window.paypal.Buttons({
-      style: { layout: "vertical", color: "black", shape: "rect", label: "subscribe" },
+      style: {
+        layout: "vertical",
+        color: "black",
+        shape: "rect",
+        label: "subscribe",
+      },
       createSubscription: async () => {
         const res = await fetch("/api/paypal/create-subscription", {
           method: "POST",
@@ -138,8 +149,14 @@ export function PayPalButton({ initialError = null }: PayPalButtonProps) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error ?? `HTTP ${res.status}`);
         }
-        const { id } = (await res.json()) as { id: string };
-        return id;
+        const body = (await res.json()) as {
+          id: string;
+          alreadyTrialed?: boolean;
+        };
+        if (body.alreadyTrialed) {
+          toast.info(t("billing.alreadyTrialedNotice"));
+        }
+        return body.id;
       },
       onApprove: () => {
         // The SDK redirects to return_url — nothing to do here.
@@ -148,10 +165,16 @@ export function PayPalButton({ initialError = null }: PayPalButtonProps) {
         // The SDK redirects to cancel_url — nothing to do here.
       },
       onError: (err) => {
-        const message = typeof err === "string" ? err : (err as { message?: string })?.message;
+        const message =
+          typeof err === "string"
+            ? err
+            : (err as { message?: string })?.message;
         const declined =
-          typeof err === "object" && (err as { name?: string }).name === "PAYMENT_DENIED";
-        setErrorMessage(declined ? t("billing.errorDecline") : t("billing.errorGeneric"));
+          typeof err === "object" &&
+          (err as { name?: string }).name === "PAYMENT_DENIED";
+        setErrorMessage(
+          declined ? t("billing.errorDecline") : t("billing.errorGeneric")
+        );
         setSdkState("error");
         if (message) {
           console.warn("[paypal button]", message);
@@ -184,5 +207,7 @@ export function PayPalButton({ initialError = null }: PayPalButtonProps) {
     );
   }
 
-  return <div id="paypal-button-container" ref={containerRef} className="min-h-12" />;
+  return (
+    <div id="paypal-button-container" ref={containerRef} className="min-h-12" />
+  );
 }

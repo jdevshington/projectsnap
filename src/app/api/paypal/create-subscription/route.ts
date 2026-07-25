@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { paypalFetch } from "@/lib/paypal/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getTrialUsed } from "@/features/billing/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,8 +33,17 @@ export async function POST() {
   const planId = process.env.PAYPAL_PLAN_ID_MONTHLY;
   if (!planId) {
     console.error("PAYPAL_PLAN_ID_MONTHLY is not set");
-    return NextResponse.json({ error: "Billing is not configured." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Billing is not configured." },
+      { status: 500 }
+    );
   }
+
+  // Tell the client this user has already used their trial so it can
+  // skip the trial-offer UI. We do NOT block the subscription itself —
+  // the webhook will mark the resulting subscription "active" instead
+  // of "trialing" (see webhook handler). This is purely a UI hint.
+  const trialUsedAt = await getTrialUsed(user.id);
 
   const created = await paypalFetch<{ id: string; status: string }>(
     "/v1/billing/subscriptions",
@@ -42,6 +52,18 @@ export async function POST() {
       body: JSON.stringify({
         plan_id: planId,
         subscriber: { email_address: user.email },
+        ...(trialUsedAt && {
+          plan: {
+            billing_cycles: [
+              {
+                sequence: 1,
+                pricing_scheme: {
+                  fixed_price: { value: "15", currency_code: "USD" },
+                },
+              },
+            ],
+          },
+        }),
         application_context: {
           brand_name: "ProjectSnap",
           shipping_preference: "NO_SHIPPING",
@@ -78,5 +100,9 @@ export async function POST() {
     );
   }
 
-  return NextResponse.json({ id: created.id, status: created.status });
+  return NextResponse.json({
+    id: created.id,
+    status: created.status,
+    alreadyTrialed: Boolean(trialUsedAt),
+  });
 }
