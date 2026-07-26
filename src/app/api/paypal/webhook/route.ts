@@ -45,19 +45,31 @@ export async function POST(request: NextRequest) {
   // 2. Extract & verify signature.
   const headers = extractWebhookHeaders(request.headers);
   if (!headers) {
-    return NextResponse.json({ error: "Missing PayPal verification headers." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing PayPal verification headers." },
+      { status: 400 }
+    );
   }
 
   let verification;
   try {
     verification = await verifyWebhookSignature({ rawBody, ...headers });
   } catch (err) {
-    console.error("[paypal webhook] signature verification transport error", err);
-    return NextResponse.json({ error: "Signature verification failed (transport)." }, { status: 500 });
+    console.error(
+      "[paypal webhook] signature verification transport error",
+      err
+    );
+    return NextResponse.json(
+      { error: "Signature verification failed (transport)." },
+      { status: 500 }
+    );
   }
 
   if (!verification.valid) {
-    console.warn("[paypal webhook] signature verification FAILED", verification.verificationStatus);
+    console.warn(
+      "[paypal webhook] signature verification FAILED",
+      verification.verificationStatus
+    );
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
@@ -73,7 +85,9 @@ export async function POST(request: NextRequest) {
   try {
     await handleEvent(event);
   } catch (err) {
-    console.error("[paypal webhook] handler error", err, { event_type: event.event_type });
+    console.error("[paypal webhook] handler error", err, {
+      event_type: event.event_type,
+    });
     return NextResponse.json({ error: "Handler error." }, { status: 500 });
   }
 
@@ -107,10 +121,21 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
     return;
   }
 
-  let internalStatus: InternalStatus = mapPayPalStatusToInternal(resource.status);
-
-  const isTrial = resource.billing_info?.cycle_executions?.[0]?.tenure_type === "TRIAL";
-  if (isTrial && (internalStatus === "trialing" || internalStatus === "incomplete")) {
+  let internalStatus: InternalStatus = mapPayPalStatusToInternal(
+    resource.status
+  );
+  const isTrial =
+    resource.billing_info?.cycle_executions?.[0]?.tenure_type === "TRIAL";
+  // PayPal reports resource.status = "ACTIVE" during the trial cycle too
+  // (not just "incomplete"), so the trial override needs to catch that
+  // case as well — otherwise a trialing subscription gets stored as
+  // "active" and /profile shows the wrong label during the free week.
+  if (
+    isTrial &&
+    (internalStatus === "trialing" ||
+      internalStatus === "incomplete" ||
+      internalStatus === "active")
+  ) {
     internalStatus = "trialing";
   }
 
@@ -156,7 +181,10 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
     // console.error — a paying customer's event should never vanish
     // silently. Still return 200: this is a state mismatch, not a
     // transient error, so retrying won't help.
-    console.error("[paypal webhook] cannot resolve user for subscription", resource.id);
+    console.error(
+      "[paypal webhook] cannot resolve user for subscription",
+      resource.id
+    );
     await supabase.from("billing_incidents").insert({
       paypal_subscription_id: resource.id,
       event_type: event.event_type,
@@ -181,7 +209,8 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
     }
   }
 
-  const nextPeriodEnd = resource.billing_info?.next_billing_time ?? existingPeriodEnd;
+  const nextPeriodEnd =
+    resource.billing_info?.next_billing_time ?? existingPeriodEnd;
 
   const upsertPayload = {
     user_id: userId,
@@ -194,8 +223,14 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
     paypal_subscription_id: resource.id,
     current_period_start: resource.start_time ?? null,
     current_period_end: nextPeriodEnd,
-    cancel_at: internalStatus === "canceled" ? resource.status_change_time ?? null : null,
-    canceled_at: internalStatus === "canceled" ? resource.status_change_time ?? null : null,
+    cancel_at:
+      internalStatus === "canceled"
+        ? resource.status_change_time ?? null
+        : null,
+    canceled_at:
+      internalStatus === "canceled"
+        ? resource.status_change_time ?? null
+        : null,
   };
 
   // onConflict targets user_id — the table's actual PRIMARY KEY and the
@@ -233,7 +268,9 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
       // if it fails the worst case is the user could in theory start
       // another trial, but the subscription status is still "active"
       // so they pay either way).
-      console.error("[paypal webhook] trial_used_at stamp failed", stampErr, { userId });
+      console.error("[paypal webhook] trial_used_at stamp failed", stampErr, {
+        userId,
+      });
     }
   }
 
@@ -243,7 +280,13 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
   // try/catch so a malformed Date or unexpected type error can't take
   // the webhook down.
   try {
-    await sendSubscriptionEmail(event, subEvent, userId, internalStatus, nextPeriodEnd);
+    await sendSubscriptionEmail(
+      event,
+      subEvent,
+      userId,
+      internalStatus,
+      nextPeriodEnd
+    );
   } catch (err) {
     console.error("[paypal webhook] email dispatch threw", err, {
       event_type: event.event_type,
@@ -258,7 +301,10 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
 async function handleSaleEmail(event: PayPalSaleEvent): Promise<void> {
   const billingAgreementId = event.resource.billing_agreement_id;
   if (!billingAgreementId) {
-    console.warn("[paypal webhook] PAYMENT.SALE event missing billing_agreement_id", event.resource.id);
+    console.warn(
+      "[paypal webhook] PAYMENT.SALE event missing billing_agreement_id",
+      event.resource.id
+    );
     return;
   }
 
@@ -270,20 +316,29 @@ async function handleSaleEmail(event: PayPalSaleEvent): Promise<void> {
     .maybeSingle();
 
   if (error) {
-    console.error("[paypal webhook] PAYMENT.SALE subscription lookup error", error, {
-      billingAgreementId,
-    });
+    console.error(
+      "[paypal webhook] PAYMENT.SALE subscription lookup error",
+      error,
+      {
+        billingAgreementId,
+      }
+    );
     return;
   }
   if (!sub?.user_id) {
-    console.warn("[paypal webhook] PAYMENT.SALE could not resolve user", billingAgreementId);
+    console.warn(
+      "[paypal webhook] PAYMENT.SALE could not resolve user",
+      billingAgreementId
+    );
     return;
   }
 
   const userId = sub.user_id;
   const to = await getUserEmail(userId);
   if (!to) {
-    console.warn("[paypal webhook] PAYMENT.SALE could not resolve email", { userId });
+    console.warn("[paypal webhook] PAYMENT.SALE could not resolve email", {
+      userId,
+    });
     return;
   }
 
@@ -297,7 +352,11 @@ async function handleSaleEmail(event: PayPalSaleEvent): Promise<void> {
     try {
       await sendPaymentSucceeded(to, amount, nextBillingDate);
     } catch (err) {
-      console.error("[paypal webhook] PAYMENT.SALE.COMPLETED email threw", err, { userId });
+      console.error(
+        "[paypal webhook] PAYMENT.SALE.COMPLETED email threw",
+        err,
+        { userId }
+      );
     }
     return;
   }
@@ -306,7 +365,9 @@ async function handleSaleEmail(event: PayPalSaleEvent): Promise<void> {
     try {
       await sendPaymentFailed(to, null);
     } catch (err) {
-      console.error("[paypal webhook] PAYMENT.SALE.DENIED email threw", err, { userId });
+      console.error("[paypal webhook] PAYMENT.SALE.DENIED email threw", err, {
+        userId,
+      });
     }
     return;
   }
