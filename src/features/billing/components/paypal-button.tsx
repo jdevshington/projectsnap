@@ -11,11 +11,10 @@
 //   3. The SDK opens the PayPal approval flow for that id.
 //   4. On approval, the SDK redirects to return_url (/billing/success).
 //      On cancel, to /billing/canceled.
-//   5. PayPal sends a webhook that flips our DB row to active/trialing.
+//   5. PayPal sends a webhook that flips our DB row to active.
 
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/context";
-import { toast } from "sonner";
 
 declare global {
   interface Window {
@@ -149,13 +148,7 @@ export function PayPalButton({ initialError = null }: PayPalButtonProps) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error ?? `HTTP ${res.status}`);
         }
-        const body = (await res.json()) as {
-          id: string;
-          alreadyTrialed?: boolean;
-        };
-        if (body.alreadyTrialed) {
-          toast.info(t("billing.alreadyTrialedNotice"));
-        }
+        const body = (await res.json()) as { id: string };
         return body.id;
       },
       onApprove: () => {

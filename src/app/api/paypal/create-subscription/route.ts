@@ -16,7 +16,6 @@ import { NextResponse } from "next/server";
 import { paypalFetch } from "@/lib/paypal/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getTrialUsed } from "@/features/billing/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,12 +38,10 @@ export async function POST() {
     );
   }
 
-  // Tell the client this user has already used their trial so it can
-  // skip the trial-offer UI. We do NOT block the subscription itself —
-  // the webhook will mark the resulting subscription "active" instead
-  // of "trialing" (see webhook handler). This is purely a UI hint.
-  const trialUsedAt = await getTrialUsed(user.id);
-
+  // No trial logic here anymore — the plan itself (PAYPAL_PLAN_ID_MONTHLY)
+  // has a single REGULAR billing cycle at $15/mo, charged from day one.
+  // There is no per-user override needed, so we no longer need to look up
+  // trial_used_at or conditionally rewrite billing_cycles.
   const created = await paypalFetch<{ id: string; status: string }>(
     "/v1/billing/subscriptions",
     {
@@ -52,18 +49,6 @@ export async function POST() {
       body: JSON.stringify({
         plan_id: planId,
         subscriber: { email_address: user.email },
-        ...(trialUsedAt && {
-          plan: {
-            billing_cycles: [
-              {
-                sequence: 1,
-                pricing_scheme: {
-                  fixed_price: { value: "15", currency_code: "USD" },
-                },
-              },
-            ],
-          },
-        }),
         application_context: {
           brand_name: "ProjectSnap",
           shipping_preference: "NO_SHIPPING",
@@ -100,9 +85,5 @@ export async function POST() {
     );
   }
 
-  return NextResponse.json({
-    id: created.id,
-    status: created.status,
-    alreadyTrialed: Boolean(trialUsedAt),
-  });
+  return NextResponse.json({ id: created.id, status: created.status });
 }

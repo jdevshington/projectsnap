@@ -16,10 +16,15 @@ export default async function BillingPage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [{ t }, overviewResult] = await Promise.all([getT(), getBillingOverview()]);
+  const [{ t }, overviewResult] = await Promise.all([
+    getT(),
+    getBillingOverview(),
+  ]);
 
   const overview =
-    overviewResult && "success" in overviewResult ? overviewResult.success : null;
+    overviewResult && "success" in overviewResult
+      ? overviewResult.success
+      : null;
 
   // Already paid (or exempt) — no need to see the pricing page.
   if (overview?.hasAccess) {
@@ -39,22 +44,28 @@ export default async function BillingPage() {
 
       <div className="rounded-xl border border-[#E2E2E0] bg-white px-5 py-4">
         <p className="text-xs font-medium uppercase tracking-widest text-[#6F6F6C]">
-          {t("billing.trial")}
-        </p>
-        <p className="mt-1 text-sm text-[#111110]">{t("billing.trialExplainer")}</p>
-
-        <p className="mt-4 text-xs font-medium uppercase tracking-widest text-[#6F6F6C]">
           {t("billing.features")}
         </p>
         <ul className="mt-2 space-y-2">
-          {(["billing.featureUnlimited", "billing.featureSupport", "billing.featureCancel"] as const).map(
-            (key) => (
-              <li key={key} className="flex items-start gap-2 text-sm text-[#111110]">
-                <Check size={15} strokeWidth={2} className="mt-0.5 shrink-0 text-[#111110]" />
-                {t(key)}
-              </li>
-            )
-          )}
+          {(
+            [
+              "billing.featureUnlimited",
+              "billing.featureSupport",
+              "billing.featureCancel",
+            ] as const
+          ).map((key) => (
+            <li
+              key={key}
+              className="flex items-start gap-2 text-sm text-[#111110]"
+            >
+              <Check
+                size={15}
+                strokeWidth={2}
+                className="mt-0.5 shrink-0 text-[#111110]"
+              />
+              {t(key)}
+            </li>
+          ))}
         </ul>
       </div>
 

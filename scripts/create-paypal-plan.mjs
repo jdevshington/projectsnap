@@ -29,7 +29,8 @@ async function getAccessToken() {
     method: "POST",
     headers: {
       Authorization:
-        "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+        "Basic " +
+        Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials",
@@ -77,21 +78,12 @@ async function createPlan(token, productId) {
     body: JSON.stringify({
       product_id: productId,
       name: "ProjectSnap Monthly",
-      description: "$15/month, 7-day free trial",
+      description: "$15/month, billed from day one",
       billing_cycles: [
-        {
-          frequency: { interval_unit: "DAY", interval_count: 7 },
-          tenure_type: "TRIAL",
-          sequence: 1,
-          total_cycles: 1,
-          pricing_scheme: {
-            fixed_price: { value: "0", currency_code: "USD" },
-          },
-        },
         {
           frequency: { interval_unit: "MONTH", interval_count: 1 },
           tenure_type: "REGULAR",
-          sequence: 2,
+          sequence: 1,
           total_cycles: 0, // 0 = infinite, renews until canceled
           pricing_scheme: {
             fixed_price: { value: "15", currency_code: "USD" },
@@ -114,7 +106,9 @@ async function createPlan(token, productId) {
 }
 
 async function main() {
-  console.log(`Using PayPal env: ${process.env.PAYPAL_ENV ?? "sandbox (default)"}`);
+  console.log(
+    `Using PayPal env: ${process.env.PAYPAL_ENV ?? "sandbox (default)"}`
+  );
   console.log(`Base URL: ${BASE}`);
 
   console.log("\n1. Getting access token...");
@@ -125,7 +119,7 @@ async function main() {
   const product = await createProduct(token);
   console.log(`   Product created: ${product.id}`);
 
-  console.log("\n3. Creating plan ($15/mo, 7-day trial)...");
+  console.log("\n3. Creating plan ($15/mo, no trial)...");
   const plan = await createPlan(token, product.id);
   console.log(`   Plan created: ${plan.id}`);
 
