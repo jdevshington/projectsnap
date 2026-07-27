@@ -1,57 +1,53 @@
-# ProjectSnap — Billing con PayPal: handoff v6 (Jul 25, 2026)
+# ProjectSnap — Billing con PayPal: handoff v7 (Jul 27, 2026)
 
 **Pégale este archivo completo a cualquier chat nuevo al inicio de la sesión.**
-Reemplaza a `projectsnap-billing-handoff-v5-2026-07-25.md`.
+Reemplaza a `projectsnap-billing-handoff-v6-2026-07-25.md`.
 
-## 🎯 CAMBIO DE ESTA SESIÓN: se quitó el trial de 7 días — ahora se cobra $15 desde el día uno
+## ✅ Confirmado desde v6: checkout sin trial funciona end-to-end
 
-Decisión del dueño del proyecto: dejar de ofrecer 7 días gratis, cobrar de inmediato al suscribirse. El reembolso de 14 días sigue siendo la red de seguridad para quien quiera "probar sin compromiso". Los trials se retoman en un entregable futuro separado — el código de trial **no se borró**, se dejó inerte (ver abajo).
+El pendiente #1 de v6 quedó resuelto: se probó un checkout real en QA con el plan nuevo (sin `TRIAL` cycle) — PayPal cobró **$15** de una vez, el webhook `BILLING.SUBSCRIPTION.ACTIVATED` llegó con `status: 200`, `tenure_type: "REGULAR"`, `cycles_completed: 1`, `last_payment.value: "15.0"`, y la fila en `subscriptions` quedó en `status: 'active'` desde el primer momento. Confirmado con el JSON real del evento en el dashboard de PayPal.
 
-### Archivos modificados
+## 🔴 Bug nuevo encontrado y corregido: `refund/route.ts` leía un campo que no existe
 
-1. **`scripts/create-paypal-plan.mjs`** — `createPlan()` ahora define un solo `billing_cycle` tipo `REGULAR` ($15/mes, `total_cycles: 0` = infinito). Se quitó el `billing_cycle` tipo `TRIAL` que existía antes (7 días, $0).
-2. **`src/app/(app)/billing/page.tsx`** — se quitaron los dos `<p>` de la card de pricing que mostraban `billing.trial` / `billing.trialExplainer` ("7 días de prueba gratis...").
-3. **`src/app/api/paypal/create-subscription/route.ts`** — se quitó el import y la llamada a `getTrialUsed(user.id)`, y el override condicional de `billing_cycles` que forzaba `$15` para usuarios que ya habían usado su trial. Ya no hace falta: el plan en sí no tiene ciclo de trial, así que **todo** usuario paga $15 desde el primer cargo, sin excepción. También se quitó `alreadyTrialed` de la respuesta JSON.
-4. **`src/features/billing/components/paypal-button.tsx`** — se quitó el import de `toast` (sonner) y la lógica que mostraba `billing.alreadyTrialedNotice` cuando `alreadyTrialed` venía en `true`. El `createSubscription` del cliente ahora solo extrae `{ id }` de la respuesta.
+**Síntoma:** al probar el flujo de reembolso en QA (pendiente #3 de v6), el botón "Request refund" tiraba un toast genérico `"Something went wrong with checkout. Please try again."` y un 500 en el servidor.
 
-### Plan de PayPal — se generó uno NUEVO
+**Causa real (confirmada con logs de Vercel, no adivinada):**
 
-Los planes de PayPal **no se pueden editar** una vez creados (no se le puede quitar el ciclo TRIAL a un plan existente). Se corrió `create-paypal-plan.mjs` de nuevo con el código actualizado, lo que generó:
+```
+TypeError: Cannot read properties of undefined (reading 'total')
+```
 
-- Un **Product ID** nuevo en PayPal (el script siempre crea un producto nuevo, no reutiliza el viejo — es cosmético, genera productos duplicados en el dashboard de PayPal pero no rompe nada funcionalmente).
-- Un **Plan ID** nuevo, sin trial, actualizado en `.env` como `PAYPAL_PLAN_ID_MONTHLY`.
+El código asumía que `GET /v1/billing/subscriptions/{id}/transactions` devuelve un campo `amount: { total, currency }` en cada transacción. **Eso no existe en la respuesta real de PayPal** — el monto viene anidado en `amount_with_breakdown.gross_amount: { value, currency_code }`. `lastPaid.amount` siempre fue `undefined`, y `.total` sobre `undefined` explotaba. Este bug existía desde que se escribió `refund/route.ts` originalmente — nunca se había disparado porque nunca se había probado un reembolso real hasta esta sesión.
 
-El plan viejo (con trial) sigue existiendo en el dashboard de PayPal, simplemente ya no se referencia desde el código — no hace falta borrarlo.
+**Fix aplicado en `src/app/api/paypal/refund/route.ts`:**
 
-**`PAYPAL_WEBHOOK_ID` NO cambia** — el webhook está atado a la app de PayPal (Client ID/Secret) y a los tipos de evento suscritos, no a un Plan ID ni Product ID específico. Cualquier suscripción bajo la misma app dispara los mismos eventos al mismo webhook, sin importar qué plan se usó.
+- El tipo de la respuesta de `paypalFetch` para `transactions` ahora usa `amount_with_breakdown?: { gross_amount: { value, currency_code } }` en vez de `amount: { total, currency }`.
+- El filtro de `lastPaid` ahora también exige `t.amount_with_breakdown` presente antes de aceptar la transacción.
+- La llamada a `POST /v2/payments/captures/{id}/refund` ahora manda `amount.value` y `amount.currency_code` leídos de `lastPaid.amount_with_breakdown.gross_amount`.
 
-### Código de trial que quedó intencionalmente sin tocar (inerte, no roto)
+Nada más cambió en ese archivo — la ventana de 14 días, la cancelación de la suscripción en PayPal post-refund (del hallazgo de la auditoría del 25 de julio), y el update en Supabase siguen igual.
 
-- `src/app/api/paypal/webhook/route.ts` — toda la detección de `isTrial` (via `cycle_executions`), el estado `"trialing"`, y el stamping de `profiles.trial_used_at` siguen en el código. Con el plan nuevo (sin ciclo TRIAL), esta lógica simplemente nunca se activa — `resource.billing_info?.cycle_executions` no va a tener un elemento con `tenure_type: "TRIAL"` nunca más. No hace daño dejarlo ahí.
-- `src/features/billing/components/billing-status-card.tsx` — el caso `"trialing"` en `statusKey`/`periodEndKey` sigue en el objeto de mapeo. Mismo razonamiento: código muerto e inofensivo.
-- `src/lib/i18n/translations.ts` — las keys `billing.trial`, `billing.trialExplainer`, `billing.alreadyTrialedNotice` (EN y ES) quedaron sin ningún caller. No rompen el build (TypeScript no se queja de keys sin usar en un objeto `as const`). Se pueden borrar cuando se retome el trial como feature separada, o dejar ahí — no urge.
-- El bug de display `"active"` vs `"trialing"` (documentado en handoffs v3-v5) queda **completamente irrelevante** ahora — sin ciclo de trial, ese caso nunca vuelve a ocurrir. Se puede quitar de la lista de pendientes.
+**Commit:** `fix: refund route reads wrong PayPal response field (amount_with_breakdown)`
 
-### Verificación hecha en esta sesión
+**Verificado:** `npx tsc --noEmit` limpio tras el fix.
 
-- `npx tsc --noEmit` — limpio, sin errores, después de los 4 edits.
-- **Pendiente de confirmar por el usuario:** `npm run build` completo, y una suscripción de prueba end-to-end confirmando que (a) PayPal pide **$15** de una vez en la pantalla de aprobación, no $0, y (b) la fila en `subscriptions` sale con `status: 'active'` desde el primer momento, nunca `'trialing'`.
+**⚠️ Pendiente de confirmar por el usuario tras el deploy:** volver a probar "Request refund" en QA y confirmar en 3 lugares — toast de éxito en la UI, `subscriptions.status = 'expired'` en Supabase, y `CANCELLED` en el dashboard de PayPal (no solo el pago reembolsado).
 
-## Todo lo demás sigue igual — no repetir
+## Todo lo de v6 sigue vigente — no repetir
 
-- Las decisiones de negocio que siguen vigentes: recurrente, $15/mes, reembolso 14 días (con cancelación real en PayPal), usuarios exentos vía `profiles.is_exempt`.
-- La arquitectura: webhook como única fuente de verdad, `has_paid_access()` como gate único (ya restringido a `auth.uid()`), service role solo en `admin.ts`, gating por página no en layout.
-- Los 4 hallazgos Alto/Medio de la auditoría del 25 de julio — ya resueltos y aplicados en DB real (ver handoff v5 para detalle si hace falta).
-- El fix de Vercel Deployment Protection bloqueando el webhook con 401 — ya resuelto (ver handoff v4).
+- Se quitó el trial de 7 días, se cobra $15 desde el día uno (detalle completo en v6: los 4 archivos modificados, el plan nuevo de PayPal, el código de trial dejado inerte a propósito).
+- Las decisiones de negocio vigentes: recurrente, $15/mes, reembolso 14 días con cancelación real en PayPal, usuarios exentos vía `profiles.is_exempt`.
+- La arquitectura: webhook como única fuente de verdad, `has_paid_access()` restringido a `auth.uid()`, service role solo en `admin.ts`, gating por página no en layout.
+- El fix de Vercel Deployment Protection bloqueando el webhook con 401 (v4) — ya resuelto.
+- Los 4 hallazgos Alto/Medio de la auditoría del 25 de julio — ya resueltos y aplicados en DB real (v5).
 
 ## Pendientes reales antes de producción
 
-1. **Confirmar la prueba end-to-end del cambio de esta sesión** (checkout cobrando $15 de una vez, `status: active` desde el inicio) — no confirmada todavía al cierre de esta sesión.
-2. **Probar el flujo de cancelación** — click en "Cancelar suscripción" en `/profile`, confirmar que PayPal la marca para cancelar al final del período, y que el webhook `CANCELLED` eventualmente llega y actualiza `status`.
-3. **Probar el flujo de reembolso** — confirmar que cancela la suscripción en PayPal (no solo `status: 'expired'` local), y probar dentro y fuera de la ventana de 14 días.
-4. **Antes de ir a producción real:** rotar `SUPABASE_SERVICE_ROLE_KEY`, cambiar `PAYPAL_ENV=live` con credenciales reales, correr `create-paypal-plan.mjs` contra el producto/plan real (no sandbox), registrar el webhook de producción, decidir postura final de Deployment Protection en Vercel para el dominio de producción.
-5. Limpieza opcional, no bloqueante: borrar las keys de i18n de trial sin usar, quitar el código inerte de trial en el webhook/billing-status-card si se confirma que no se retoma pronto.
+1. **Confirmar el fix de refund tras el deploy** (ver arriba) — no confirmado todavía al cierre de esta sesión.
+2. **Probar el flujo de cancelación** — click en "Cancelar suscripción" en `/profile`, confirmar que PayPal la marca para cancelar al final del período, y que el webhook `CANCELLED` eventualmente llega y actualiza `status`. **Sigue sin probarse.**
+3. **Antes de ir a producción real:** rotar `SUPABASE_SERVICE_ROLE_KEY`, cambiar `PAYPAL_ENV=live` con credenciales reales, correr `create-paypal-plan.mjs` contra el producto/plan real (no sandbox), registrar el webhook de producción, decidir postura final de Deployment Protection en Vercel para el dominio de producción.
+4. Limpieza opcional, no bloqueante: borrar las keys de i18n de trial sin usar, quitar el código inerte de trial en el webhook/billing-status-card si se confirma que no se retoma pronto.
 
 ## Nota de proceso (para el próximo Claude)
 
-Esta ronda tuvo un problema operativo, no de lógica: al pegar código nuevo a mano, el usuario accidentalmente sobreescribió partes de `create-paypal-plan.mjs` (quedó en 37 líneas en vez de ~130) y mezcló código de dos archivos distintos en `create-subscription/route.ts` (el `createSubscription` del cliente terminó pegado en medio de la palabra `paypal_subscription_id` del servidor). La lección: cuando el usuario dice "no veo el código" o algo "no se imprimió" sin error aparente, pedir `wc -l` o `cat` del archivo real antes de asumir que es un bug de lógica — a veces es simplemente un archivo corrupto por copy-paste, y ahí lo más rápido es dar el archivo completo de nuevo en vez de tratar de diagnosticar un diff parcial.
+Cuarta vez en este proyecto que un flujo "se ve bien en el código" pero falla en la práctica porque la forma real de la respuesta de una API externa no coincidía con lo que el tipo de TypeScript prometía (antes: `listUsers` sin filtro de email real, el body del webhook mal anidado, ahora: `amount` vs `amount_with_breakdown` en transactions). **Lección repetida:** para cualquier endpoint de PayPal que no se haya probado con datos reales todavía, no confiar en la forma de la respuesta escrita a mano — o se verifica contra la documentación oficial línea por línea, o se loggea la respuesta cruda la primera vez antes de asumir su forma. `tsc --noEmit` limpio NO detecta este tipo de bug — el tipo estaba mal declarado desde el inicio, así que TypeScript solo confirmaba consistencia interna, no corrección contra la API real.

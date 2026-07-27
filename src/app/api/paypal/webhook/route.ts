@@ -148,7 +148,7 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
   // value.
   const { data: existing } = await supabase
     .from("subscriptions")
-    .select("user_id, current_period_end")
+    .select("user_id, status, current_period_end")
     .eq("paypal_subscription_id", resource.id)
     .maybeSingle();
 
@@ -207,6 +207,16 @@ async function handleEvent(event: PayPalEvent): Promise<void> {
     if (trialUsedAt) {
       internalStatus = "active";
     }
+  }
+
+  // A refund sets status='expired' directly (immediate access loss) and
+  // then explicitly cancels the subscription in PayPal — that PayPal
+  // cancellation fires its OWN async CANCELLED webhook afterward, which
+  // would otherwise downgrade 'expired' back to 'canceled' (a weaker,
+  // grace-period state) and show a misleading "access until <date>" in
+  // the UI. 'expired' is a terminal state; never let CANCELLED overwrite it.
+  if (existing?.status === "expired" && internalStatus === "canceled") {
+    internalStatus = "expired";
   }
 
   const nextPeriodEnd =
