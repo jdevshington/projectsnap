@@ -40,14 +40,20 @@ export async function POST() {
     return NextResponse.json({ error: subErr.message }, { status: 500 });
   }
   if (!sub || !sub.paypal_subscription_id) {
-    return NextResponse.json({ error: "No active subscription to refund." }, { status: 400 });
+    return NextResponse.json(
+      { error: "No active subscription to refund." },
+      { status: 400 }
+    );
   }
 
-  const periodStart = sub.current_period_start ? new Date(sub.current_period_start) : null;
+  const periodStart = sub.current_period_start
+    ? new Date(sub.current_period_start)
+    : null;
   const now = new Date();
   const withinWindow =
     periodStart !== null &&
-    (now.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24) < REFUND_WINDOW_DAYS;
+    (now.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24) <
+      REFUND_WINDOW_DAYS;
 
   if (!withinWindow) {
     return NextResponse.json(
@@ -63,34 +69,41 @@ export async function POST() {
   // BOTH start_time AND end_time are required by PayPal on this endpoint.
   // We use the same 35-day window as the upper bound — a charge older than
   // that can't be inside the 14-day refund window anyway.
-  const startTime = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000).toISOString();
+  const startTime = new Date(
+    now.getTime() - 35 * 24 * 60 * 60 * 1000
+  ).toISOString();
   const endTime = now.toISOString();
 
   const sales = await paypalFetch<{
-    // PayPal's /v1/billing/subscriptions/{id}/transactions response includes
-    // a top-level `time` field on each transaction representing the actual
-    // transaction time (ISO 8601 string). We sort on that, not on `id`, so
-    // the most recent payment is picked even when transaction ids happen
-    // not to sort lexicographically by time.
+    // PayPal's real response shape for this endpoint uses
+    // amount_with_breakdown.gross_amount, NOT a top-level `amount` field.
+    // (Confirmed by the actual 500 in production logs: `amount` was
+    // undefined on every transaction object.)
     transactions?: Array<{
       id: string;
       status: string;
       time: string;
-      amount: { total: string; currency: string };
+      amount_with_breakdown?: {
+        gross_amount: { value: string; currency_code: string };
+      };
     }>;
   }>(
-    `/v1/billing/subscriptions/${sub.paypal_subscription_id}/transactions?start_time=${encodeURIComponent(
+    `/v1/billing/subscriptions/${
+      sub.paypal_subscription_id
+    }/transactions?start_time=${encodeURIComponent(
       startTime
     )}&end_time=${encodeURIComponent(endTime)}`
   );
 
   const lastPaid = sales.transactions
-    ?.filter((t) => t.status === "COMPLETED")
+    ?.filter((t) => t.status === "COMPLETED" && t.amount_with_breakdown)
     .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
 
-  if (!lastPaid) {
+  if (!lastPaid || !lastPaid.amount_with_breakdown) {
     return NextResponse.json(
-      { error: "No completed payment found to refund. Please contact support." },
+      {
+        error: "No completed payment found to refund. Please contact support.",
+      },
       { status: 400 }
     );
   }
@@ -98,7 +111,11 @@ export async function POST() {
   await paypalFetch(`/v2/payments/captures/${lastPaid.id}/refund`, {
     method: "POST",
     body: JSON.stringify({
-      amount: { value: lastPaid.amount.total, currency_code: lastPaid.amount.currency },
+      amount: {
+        value: lastPaid.amount_with_breakdown.gross_amount.value,
+        currency_code:
+          lastPaid.amount_with_breakdown.gross_amount.currency_code,
+      },
       reason: "BUYER_REQUEST",
     }),
   });
@@ -108,10 +125,13 @@ export async function POST() {
   // If this fails we still mark the local row 'expired' — access is revoked
   // locally regardless, and the failed cancel is logged for support follow-up.
   try {
-    await paypalFetch(`/v1/billing/subscriptions/${sub.paypal_subscription_id}/cancel`, {
-      method: "POST",
-      body: JSON.stringify({ reason: "Refunded via /refund route" }),
-    });
+    await paypalFetch(
+      `/v1/billing/subscriptions/${sub.paypal_subscription_id}/cancel`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reason: "Refunded via /refund route" }),
+      }
+    );
   } catch (cancelErr) {
     console.error(
       "[refund] PayPal subscription cancel failed after refund",
