@@ -459,8 +459,17 @@ async function sendSubscriptionEmail(
   }
 
   if (eventType === "BILLING.SUBSCRIPTION.CANCELLED") {
-    // Access runs through current_period_end, which we already
-    // resolved above (nextPeriodEnd falls back to existingPeriodEnd).
+    // If a refund already forced internalStatus to 'expired' (see the
+    // guard above that stops this same CANCELLED webhook from
+    // downgrading 'expired' back to 'canceled'), this event is just
+    // PayPal's async confirmation of a cancellation WE triggered as
+    // part of a refund. The refund route already sends its own
+    // "refund issued, access revoked now" email — sending this one too
+    // would wrongly tell the user access continues until a date it
+    // does not.
+    if (internalStatus === "expired") {
+      return;
+    }
     const accessUntil = nextPeriodEnd ? new Date(nextPeriodEnd) : new Date();
     await sendSubscriptionCanceled(to, accessUntil);
     return;

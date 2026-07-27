@@ -128,6 +128,7 @@ export const translations = {
       "Refund window has closed. Use Cancel subscription instead to keep access until the end of the period.",
     "billing.alreadyTrialedNotice":
       "You've already used your free trial. You'll be charged $15 now.",
+    "profile.billingRefunding": "Processing refund…",
   },
   es: {
     // Dashboard
@@ -255,6 +256,7 @@ export const translations = {
       "La ventana de reembolso está cerrada. Usa Cancelar suscripción para mantener el acceso hasta el final del período.",
     "billing.alreadyTrialedNotice":
       "Ya usaste tu prueba gratis. Se te cobrará $15 ahora.",
+    "profile.billingRefunding": "Procesando reembolso…",
   },
 } as const;
 

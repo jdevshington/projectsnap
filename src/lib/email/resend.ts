@@ -178,8 +178,25 @@ export async function sendSubscriptionCanceled(
     "Your ProjectSnap subscription has been canceled",
     layout(`
       <p style="margin:0 0 16px 0;">Hi ${safeTo},</p>
-      <p style="margin:0 0 16px 0;">Your ProjectSnap subscription has been canceled. You'll keep full access until <strong style="color:${STYLES.accent};">${date}</strong>, after which your account will switch to the free tier.</p>
-      <p style="margin:0;">You can re-subscribe anytime from the billing page — your data and projects will be right where you left them.</p>
+      <p style="margin:0 0 16px 0;">Your ProjectSnap subscription has been canceled. You'll keep full access until <strong style="color:${STYLES.accent};">${date}</strong>, after which your access will end — there is no free tier.</p>
+      <p style="margin:0;">If you change your mind, you can re-subscribe anytime from the billing page before or after that date.</p>
+    `)
+  );
+}
+
+export async function sendRefundIssued(
+  to: string,
+  amount: string
+): Promise<void> {
+  const safeTo = escapeHtml(to);
+  const safeAmount = escapeHtml(amount);
+  await send(
+    to,
+    "Refund issued — ProjectSnap",
+    layout(`
+      <p style="margin:0 0 16px 0;">Hi ${safeTo},</p>
+      <p style="margin:0 0 16px 0;">We've issued a refund of <strong style="color:${STYLES.accent};">${safeAmount}</strong> and your ProjectSnap access has been revoked immediately — unlike a regular cancellation, a refund does not keep access until the end of the billing period.</p>
+      <p style="margin:0;">There is no free tier. If you'd like to come back, you can re-subscribe anytime from the billing page.</p>
     `)
   );
 }

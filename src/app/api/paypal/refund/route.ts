@@ -14,6 +14,8 @@ import { NextResponse } from "next/server";
 import { paypalFetch } from "@/lib/paypal/client";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getUserEmail } from "@/lib/email/get-user-email";
+import { sendRefundIssued } from "@/lib/email/resend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -151,6 +153,20 @@ export async function POST() {
       { error: "Refund issued but state update failed; contact support." },
       { status: 500 }
     );
+  }
+
+  const to = await getUserEmail(user.id);
+  if (to) {
+    try {
+      await sendRefundIssued(
+        to,
+        `${lastPaid.amount_with_breakdown.gross_amount.value} ${lastPaid.amount_with_breakdown.gross_amount.currency_code}`
+      );
+    } catch (err) {
+      console.error("[refund] refund-issued email threw", err, {
+        userId: user.id,
+      });
+    }
   }
 
   return NextResponse.json({ ok: true, refunded: lastPaid.id });
