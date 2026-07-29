@@ -9,7 +9,9 @@
 //   * Request refund: POSTs to /api/paypal/refund — a Route Handler
 //     because it's a single button click with no form, and the 14-day
 //     window is enforced server-side; the client never decides whether a
-//     refund is allowed.
+//     refund is allowed. Now gated behind an explicit confirmation step,
+//     matching the Cancel flow (a refund is a bigger commitment than a
+//     scheduled cancellation — it revokes access immediately).
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -32,10 +34,29 @@ function formatDate(iso: string | null, locale: string): string {
   }).format(new Date(iso));
 }
 
-export function BillingStatusCard({ subscription, isExempt, hasAccess }: BillingStatusCardProps) {
+// Statuses where "period end" still means something to the user (they
+// either have access until that date, or their access continues until
+// then even though it's scheduled to lapse). 'expired' is a terminal
+// state — access was already revoked (e.g. by a refund), so showing a
+// stale current_period_end next to it reads as "I still have access
+// until then," which is exactly backwards. 'incomplete' never had a
+// meaningful period to begin with.
+const STATUSES_WITH_MEANINGFUL_PERIOD_END = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "canceled",
+]);
+
+export function BillingStatusCard({
+  subscription,
+  isExempt,
+  hasAccess,
+}: BillingStatusCardProps) {
   const { t, locale } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
 
   function handleCancel() {
     startTransition(async () => {
@@ -63,11 +84,14 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
           } else {
             toast.error(body.error ?? t("billing.errorGeneric"));
           }
+          setRefundOpen(false);
           return;
         }
         toast.success(t("profile.billingRefundSuccess"));
+        setRefundOpen(false);
       } catch {
         toast.error(t("billing.errorGeneric"));
+        setRefundOpen(false);
       }
     });
   }
@@ -75,8 +99,12 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
   if (isExempt) {
     return (
       <div className="mt-4 rounded-xl border border-[#E2E2E0] bg-white px-5 py-4">
-        <h2 className="text-sm font-semibold text-[#111110]">{t("profile.billing")}</h2>
-        <p className="mt-1 text-sm text-[#6F6F6C]">{t("profile.billingExemptExplainer")}</p>
+        <h2 className="text-sm font-semibold text-[#111110]">
+          {t("profile.billing")}
+        </h2>
+        <p className="mt-1 text-sm text-[#6F6F6C]">
+          {t("profile.billingExemptExplainer")}
+        </p>
       </div>
     );
   }
@@ -84,7 +112,9 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
   if (!subscription) {
     return (
       <div className="mt-4 rounded-xl border border-[#E2E2E0] bg-white px-5 py-4">
-        <h2 className="text-sm font-semibold text-[#111110]">{t("profile.billing")}</h2>
+        <h2 className="text-sm font-semibold text-[#111110]">
+          {t("profile.billing")}
+        </h2>
         <p className="mt-1 text-sm text-[#6F6F6C]">{t("billing.subtitle")}</p>
         <a
           href="/billing"
@@ -109,13 +139,19 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
     subscription.status === "active"
       ? "profile.billingRenewsOn"
       : subscription.status === "trialing"
-        ? "profile.billingTrialEndsOn"
-        : "profile.billingAccessUntil";
+      ? "profile.billingTrialEndsOn"
+      : "profile.billingAccessUntil";
+
+  const showPeriodEnd =
+    Boolean(subscription.current_period_end) &&
+    STATUSES_WITH_MEANINGFUL_PERIOD_END.has(subscription.status);
 
   return (
     <div className="mt-4 rounded-xl border border-[#E2E2E0] bg-white divide-y divide-[#F0F0EE]">
       <div className="px-5 py-4">
-        <h2 className="text-sm font-semibold text-[#111110]">{t("profile.billing")}</h2>
+        <h2 className="text-sm font-semibold text-[#111110]">
+          {t("profile.billing")}
+        </h2>
       </div>
 
       <div className="grid grid-cols-2 gap-px bg-[#F0F0EE]">
@@ -127,11 +163,13 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
         </div>
         <div className="bg-white px-5 py-3">
           <p className="text-xs text-[#6F6F6C]">{t("profile.billingStatus")}</p>
-          <p className="mt-0.5 text-sm font-medium text-[#111110]">{t(statusKey)}</p>
+          <p className="mt-0.5 text-sm font-medium text-[#111110]">
+            {t(statusKey)}
+          </p>
         </div>
       </div>
 
-      {subscription.current_period_end && (
+      {showPeriodEnd && (
         <div className="px-5 py-3">
           <p className="text-xs text-[#6F6F6C]">{t(periodEndKey)}</p>
           <p className="mt-0.5 text-sm font-medium text-[#111110]">
@@ -141,9 +179,10 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
       )}
 
       <div className="space-y-2 px-5 py-4">
-        {!cancelOpen ? (
+        {!cancelOpen && !refundOpen ? (
           <>
-            {(subscription.status === "active" || subscription.status === "trialing") && (
+            {(subscription.status === "active" ||
+              subscription.status === "trialing") && (
               <button
                 type="button"
                 onClick={() => setCancelOpen(true)}
@@ -155,7 +194,7 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
             {subscription.status === "active" && hasAccess && (
               <button
                 type="button"
-                onClick={handleRefund}
+                onClick={() => setRefundOpen(true)}
                 disabled={isPending}
                 className="w-full rounded-lg border border-[#E2E2E0] bg-white px-4 py-2 text-sm text-[#6F6F6C] hover:bg-[#F8F8F7] disabled:opacity-50"
               >
@@ -163,9 +202,11 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
               </button>
             )}
           </>
-        ) : (
+        ) : cancelOpen ? (
           <div className="space-y-2">
-            <p className="text-sm text-[#6F6F6C]">{t("billing.featureCancel")}</p>
+            <p className="text-sm text-[#6F6F6C]">
+              {t("billing.featureCancel")}
+            </p>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -181,7 +222,35 @@ export function BillingStatusCard({ subscription, isExempt, hasAccess }: Billing
                 disabled={isPending}
                 className="flex-1 rounded-lg bg-[#111110] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                {isPending ? t("profile.billingCanceling") : t("profile.billingCancel")}
+                {isPending
+                  ? t("profile.billingCanceling")
+                  : t("profile.billingCancel")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-[#6F6F6C]">
+              {t("profile.billingRefundExplainer")}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setRefundOpen(false)}
+                disabled={isPending}
+                className="flex-1 rounded-lg border border-[#E2E2E0] bg-white px-4 py-2 text-sm text-[#111110] disabled:opacity-50"
+              >
+                {t("common.back")}
+              </button>
+              <button
+                type="button"
+                onClick={handleRefund}
+                disabled={isPending}
+                className="flex-1 rounded-lg bg-[#111110] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {isPending
+                  ? t("profile.billingRefunding")
+                  : t("profile.billingRefund")}
               </button>
             </div>
           </div>
