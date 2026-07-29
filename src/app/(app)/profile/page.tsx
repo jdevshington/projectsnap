@@ -8,17 +8,21 @@ import { getProfile } from "@/features/profile/queries";
 import { NewUiToggle } from "@/features/profile/components/new-ui-toggle";
 import { getBillingOverview } from "@/features/billing/actions";
 import { BillingStatusCard } from "@/features/billing/components/billing-status-card";
+import { getBillingHistory } from "@/features/billing/queries";
+import { BillingHistoryList } from "@/features/billing/components/billing-history-list";
 
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   const user = await getUser();
   if (!user) redirect("/login");
-  const [{ t }, profile, billingResult] = await Promise.all([
-    getT(),
-    getProfile(user.id),
-    getBillingOverview(),
-  ]);
+  const [{ t, locale }, profile, billingResult, billingHistory] =
+    await Promise.all([
+      getT(),
+      getProfile(user.id),
+      getBillingOverview(),
+      getBillingHistory(),
+    ]);
 
   const billing =
     billingResult && "success" in billingResult ? billingResult.success : null;
@@ -49,11 +53,14 @@ export default async function ProfilePage() {
       </div>
 
       {billing && (
-        <BillingStatusCard
-          subscription={billing.subscription}
-          isExempt={billing.isExempt}
-          hasAccess={billing.hasAccess}
-        />
+        <>
+          <BillingStatusCard
+            subscription={billing.subscription}
+            isExempt={billing.isExempt}
+            hasAccess={billing.hasAccess}
+          />
+          <BillingHistoryList events={billingHistory} t={t} locale={locale} />
+        </>
       )}
 
       <div className="mt-6">

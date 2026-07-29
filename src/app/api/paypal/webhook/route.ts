@@ -17,7 +17,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getTrialUsed } from "@/features/billing/queries";
+import { getTrialUsed, logBillingEvent } from "@/features/billing/queries";
 import {
   sendPaymentFailed,
   sendPaymentSucceeded,
@@ -361,6 +361,12 @@ async function handleSaleEmail(event: PayPalSaleEvent): Promise<void> {
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     try {
       await sendPaymentSucceeded(to, amount, nextBillingDate);
+      await logBillingEvent(createAdminClient(), {
+        userId,
+        eventType: "payment_succeeded",
+        amount: event.resource.amount?.total,
+        currency: event.resource.amount?.currency,
+      });
     } catch (err) {
       console.error(
         "[paypal webhook] PAYMENT.SALE.COMPLETED email threw",
@@ -374,6 +380,10 @@ async function handleSaleEmail(event: PayPalSaleEvent): Promise<void> {
   if (event.event_type === "PAYMENT.SALE.DENIED") {
     try {
       await sendPaymentFailed(to, null);
+      await logBillingEvent(createAdminClient(), {
+        userId,
+        eventType: "payment_failed",
+      });
     } catch (err) {
       console.error("[paypal webhook] PAYMENT.SALE.DENIED email threw", err, {
         userId,
@@ -425,28 +435,46 @@ async function sendSubscriptionEmail(
     : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   if (eventType === "BILLING.SUBSCRIPTION.ACTIVATED") {
+    const supabase = createAdminClient();
     if (internalStatus === "trialing") {
       await sendTrialStarted(to, trialEndDate);
+      await logBillingEvent(supabase, { userId, eventType: "trial_started" });
     } else {
       // Returning customer — the second-trial prevention path
       // promoted them straight to "active". Treat as a successful
       // first paid payment.
-      const amount = subEvent.resource.billing_info?.last_payment?.amount
-        ? `${subEvent.resource.billing_info.last_payment.amount.value} ${subEvent.resource.billing_info.last_payment.amount.currency_code}`
+      const lastPaymentAmount =
+        subEvent.resource.billing_info?.last_payment?.amount;
+      const amount = lastPaymentAmount
+        ? `${lastPaymentAmount.value} ${lastPaymentAmount.currency_code}`
         : "";
       await sendPaymentSucceeded(to, amount, trialEndDate);
+      await logBillingEvent(supabase, {
+        userId,
+        eventType: "payment_succeeded",
+        amount: lastPaymentAmount?.value,
+        currency: lastPaymentAmount?.currency_code,
+      });
     }
     return;
   }
 
   if (eventType === "BILLING.SUBSCRIPTION.RENEWED") {
-    const amount = subEvent.resource.billing_info?.last_payment?.amount
-      ? `${subEvent.resource.billing_info.last_payment.amount.value} ${subEvent.resource.billing_info.last_payment.amount.currency_code}`
+    const lastPaymentAmount =
+      subEvent.resource.billing_info?.last_payment?.amount;
+    const amount = lastPaymentAmount
+      ? `${lastPaymentAmount.value} ${lastPaymentAmount.currency_code}`
       : "";
     const nextBilling = nextPeriodEnd
       ? new Date(nextPeriodEnd)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await sendPaymentSucceeded(to, amount, nextBilling);
+    await logBillingEvent(createAdminClient(), {
+      userId,
+      eventType: "payment_succeeded",
+      amount: lastPaymentAmount?.value,
+      currency: lastPaymentAmount?.currency_code,
+    });
     return;
   }
 
@@ -455,6 +483,10 @@ async function sendSubscriptionEmail(
     // the webhook payload, so we don't promise a date in the email —
     // the template already handles the "no date" branch.
     await sendPaymentFailed(to, null);
+    await logBillingEvent(createAdminClient(), {
+      userId,
+      eventType: "payment_failed",
+    });
     return;
   }
 
@@ -472,6 +504,10 @@ async function sendSubscriptionEmail(
     }
     const accessUntil = nextPeriodEnd ? new Date(nextPeriodEnd) : new Date();
     await sendSubscriptionCanceled(to, accessUntil);
+    await logBillingEvent(createAdminClient(), {
+      userId,
+      eventType: "subscription_canceled",
+    });
     return;
   }
 }

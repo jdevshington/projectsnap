@@ -130,6 +130,13 @@ export const translations = {
       "You've already used your free trial. You'll be charged $15 now.",
     "profile.billingRefunding": "Processing refund…",
     "profile.billingResubscribe": "Resubscribe",
+    "profile.billingHistory": "Billing history",
+    "profile.billingHistoryEmpty": "No billing activity yet.",
+    "profile.billingEventTrialStarted": "Trial started",
+    "profile.billingEventPaymentSucceeded": "Payment received",
+    "profile.billingEventPaymentFailed": "Payment failed",
+    "profile.billingEventSubscriptionCanceled": "Subscription canceled",
+    "profile.billingEventRefundIssued": "Refund issued",
   },
   es: {
     // Dashboard
@@ -259,6 +266,13 @@ export const translations = {
       "Ya usaste tu prueba gratis. Se te cobrará $15 ahora.",
     "profile.billingRefunding": "Procesando reembolso…",
     "profile.billingResubscribe": "Volver a suscribirse",
+    "profile.billingHistory": "Historial de facturación",
+    "profile.billingHistoryEmpty": "Aún no hay actividad de facturación.",
+    "profile.billingEventTrialStarted": "Prueba iniciada",
+    "profile.billingEventPaymentSucceeded": "Pago recibido",
+    "profile.billingEventPaymentFailed": "Pago fallido",
+    "profile.billingEventSubscriptionCanceled": "Suscripción cancelada",
+    "profile.billingEventRefundIssued": "Reembolso emitido",
   },
 } as const;
 

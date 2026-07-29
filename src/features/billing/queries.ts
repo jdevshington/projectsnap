@@ -94,3 +94,69 @@ export async function getTrialUsed(userId: string): Promise<Date | null> {
   if (!data?.trial_used_at) return null;
   return new Date(data.trial_used_at);
 }
+
+export type BillingEventRow = {
+  id: string;
+  event_type:
+    | "trial_started"
+    | "payment_succeeded"
+    | "payment_failed"
+    | "subscription_canceled"
+    | "refund_issued";
+  amount: number | null;
+  currency: string | null;
+  occurred_at: string;
+};
+
+/** Read the calling user's billing history, most recent first. Used by
+ *  /profile to render the billing history section. Capped at 20 rows —
+ *  this is a UI convenience list, not an export/audit tool. */
+export const getBillingHistory = cache(async (): Promise<BillingEventRow[]> => {
+  const user = await getUser();
+  if (!user) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("billing_events")
+    .select("id, event_type, amount, currency, occurred_at")
+    .eq("user_id", user.id)
+    .order("occurred_at", { ascending: false })
+    .limit(20);
+
+  if (error) throw new Error(error.message);
+  return (data as BillingEventRow[]) ?? [];
+});
+
+/** Insert a row into billing_events. Called from the webhook and the
+ *  refund route, right alongside the corresponding email send — same
+ *  event, same place in the code, so the history and the emails a user
+ *  received can never drift apart. Takes an already-constructed admin
+ *  client (both callers already have one) instead of creating a new
+ *  one, and never throws — a failed history write should never break
+ *  the webhook or the refund flow; it's a nice-to-have UI list, not a
+ *  source of truth for access. */
+export async function logBillingEvent(
+  supabase: ReturnType<typeof createAdminClient>,
+  params: {
+    userId: string;
+    eventType: BillingEventRow["event_type"];
+    amount?: string | null;
+    currency?: string | null;
+    occurredAt?: Date;
+  }
+): Promise<void> {
+  const { error } = await supabase.from("billing_events").insert({
+    user_id: params.userId,
+    event_type: params.eventType,
+    amount: params.amount ? Number(params.amount) : null,
+    currency: params.currency ?? null,
+    occurred_at: (params.occurredAt ?? new Date()).toISOString(),
+  });
+
+  if (error) {
+    console.error("[billing_events] insert failed", error, {
+      userId: params.userId,
+      eventType: params.eventType,
+    });
+  }
+}

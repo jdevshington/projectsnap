@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserEmail } from "@/lib/email/get-user-email";
 import { sendRefundIssued } from "@/lib/email/resend";
+import { logBillingEvent } from "@/features/billing/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -162,6 +163,12 @@ export async function POST() {
         to,
         `${lastPaid.amount_with_breakdown.gross_amount.value} ${lastPaid.amount_with_breakdown.gross_amount.currency_code}`
       );
+      await logBillingEvent(admin, {
+        userId: user.id,
+        eventType: "refund_issued",
+        amount: lastPaid.amount_with_breakdown.gross_amount.value,
+        currency: lastPaid.amount_with_breakdown.gross_amount.currency_code,
+      });
     } catch (err) {
       console.error("[refund] refund-issued email threw", err, {
         userId: user.id,
