@@ -201,6 +201,14 @@ export function BillingStatusCard({
                 {t("profile.billingRefund")}
               </button>
             )}
+            {subscription.status === "expired" && (
+              <a
+                href="/billing"
+                className="block w-full rounded-lg bg-[#111110] px-4 py-2 text-center text-sm font-medium text-white hover:opacity-90"
+              >
+                {t("profile.billingResubscribe")}
+              </a>
+            )}
           </>
         ) : cancelOpen ? (
           <div className="space-y-2">

@@ -129,6 +129,7 @@ export const translations = {
     "billing.alreadyTrialedNotice":
       "You've already used your free trial. You'll be charged $15 now.",
     "profile.billingRefunding": "Processing refund…",
+    "profile.billingResubscribe": "Resubscribe",
   },
   es: {
     // Dashboard
@@ -257,6 +258,7 @@ export const translations = {
     "billing.alreadyTrialedNotice":
       "Ya usaste tu prueba gratis. Se te cobrará $15 ahora.",
     "profile.billingRefunding": "Procesando reembolso…",
+    "profile.billingResubscribe": "Volver a suscribirse",
   },
 } as const;
 
